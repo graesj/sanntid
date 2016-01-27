@@ -33,10 +33,15 @@ int main(void)
 
       //receive buffer
       char buf[BUFLEN];
-       
+      
+      
    
       if ((s=socket(AF_INET, SOCK_STREAM, 0))==-1)
          diep("ERROR socket");
+
+      int optval = 1;
+      setsockopt(s, SOL_SOCKET, SO_REUSEADDR, 
+        (const void *)&optval , sizeof(int));
 
       //zero out the struct
       memset((char *) &si_me, 0, sizeof(si_me));
@@ -51,7 +56,7 @@ int main(void)
   
       while(1)
       {
-          usleep(500*1000);
+          usleep(500*10);
 
           //Wait to establish connection
           printf("Waiting for client...\n");
@@ -60,7 +65,7 @@ int main(void)
             diep("ERROR on accept");
 
           //Obatin client information
-          hostp = gethostbyaddr((char *)&si_other.sin_addr.s_addr, 
+          /*hostp = gethostbyaddr((char *)&si_other.sin_addr.s_addr, 
                              sizeof(si_other.sin_addr.s_addr), AF_INET);
 
           if (hostp == NULL)
@@ -70,7 +75,7 @@ int main(void)
           if (hostaddrp == NULL)
             diep("ERROR on inet_ntoa\n");
 
-          printf("Server established connection with %s (%s) \n",hostp->h_name,hostaddrp);
+          printf("Server established connection with %s (%s) \n",hostp->h_name,hostaddrp);*/
 
           //Recieve data from client
           bzero(buf,BUFLEN);
