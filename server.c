@@ -12,7 +12,7 @@
 //Define buffer size and UDP port number
 #define BUFLEN 512
 #define NPACK 10
-#define PORT 20029 //20000 + labplass
+#define PORT 20029 //20000 + labplass 
 
 //Function for error handling
 void diep(char *s)
@@ -27,6 +27,7 @@ void diep(char *s)
        struct sockaddr_in si_me, si_other;
        int s, i, slen=sizeof(si_other); //receive buffer
        char buf[BUFLEN];
+       
    
        if ((s=socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP))==-1)
          diep("socket");
@@ -60,13 +61,14 @@ void diep(char *s)
         //print details of the client/peer and the data received
         printf("Received packet from %s:%d\n", inet_ntoa(si_other.sin_addr), ntohs(si_other.sin_port));
         printf("Data: %s\n" , buf);
-         printf("Received packet from %s:%d\nData: %s\n\n", 
-                inet_ntoa(si_other.sin_addr), ntohs(si_other.sin_port), buf);
+        printf("Received packet from %s:%d\nData: %s\n\n", 
+        inet_ntoa(si_other.sin_addr), ntohs(si_other.sin_port), buf);
         //now reply the client with the same data
-        /*if (sendto(s, buf, recvfrom, 0, (struct sockaddr*) &si_other, slen) == -1)
+        if (sendto(s, buf, strlen(buf), 0, (struct sockaddr*) &si_other, slen) == -1)
         {
-            die("sendto()");
-        }*/
+            diep("sendto()");
+        }
+        memset(buf,'\0',BUFLEN);
     }
        close(s);
        return 0;

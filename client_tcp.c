@@ -8,7 +8,7 @@
 #include <sys/socket.h>
  
 #define SERVER "129.241.187.141"
-#define BUFLEN 512  //Max length of buffer
+#define BUFLEN 1024  //Max length of buffer
 #define PORT 20029   //The port on which to send data
  
 void die(char *s)
@@ -17,14 +17,15 @@ void die(char *s)
     exit(1);
 }
  
-int main(void)
+int main(int argc, char *argv[])
 {
     struct sockaddr_in si_other;
     int s, i, slen=sizeof(si_other);
     char buf[BUFLEN];
-    char message[BUFLEN];
- 
-    if ( (s=socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)) == -1)
+    
+    
+    
+    if ( (s=socket(AF_INET, SOCK_STREAM, 0)) == -1)
     {
         die("socket");
     }
