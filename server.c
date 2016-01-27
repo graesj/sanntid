@@ -12,7 +12,7 @@
 //Define buffer size and UDP port number
 #define BUFLEN 512
 #define NPACK 10
-#define PORT 20004 //20000 + labplass
+#define PORT 20029 //20000 + labplass
 
 //Function for error handling
 void diep(char *s)
@@ -47,7 +47,7 @@ void diep(char *s)
    */
        while(1)
     {
-    	sleep(500);
+    	usleep(500*1000);
         printf("Waiting for data...");
         fflush(stdout);
          
