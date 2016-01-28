@@ -10,7 +10,7 @@
 #include <netdb.h>
 #include <unistd.h>
 
-#define SERVER "129.241.187.141"
+#define SERVER "129.241.187.146"
 #define BUFLEN 1024  //Max length of buffer
 #define PORT 20029   //The port on which to send data
  
@@ -31,14 +31,13 @@ int main(int argc, char *argv[])
 
     memset(buf,'\0',BUFLEN);
 
-    for(int k = 1; k < argc; k++){
-        printf("Nummer %d : %s\n",k,argv[k]);
-    }
+    strcpy(buf,argv[1]);
+    strcat(buf," ");
 
-    for(int j = 0; j < sizeof(argv[1]); j++){
-        buf[j] = argv[1][j];
+    for(int k = 2; k < argc; k++){
+        strcat(buf,argv[k]);
+        strcat(buf," ");
     }
-
 
     if ( (s=socket(AF_INET, SOCK_STREAM, 0)) == -1)
     {
