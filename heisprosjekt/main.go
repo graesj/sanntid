@@ -1,5 +1,6 @@
 package main 
 
+import "C"
 
 import(
 	"fmt"
@@ -19,7 +20,7 @@ func main(){
 
 	go UDPsend(msg)
 	go UDPListen(msgrec)
-	fmt.Println("Hei")
+	fmt.Println("Hei") 
 
  for {
  	select {
