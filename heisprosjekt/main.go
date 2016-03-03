@@ -3,39 +3,29 @@ package main
 
 import(
 	"fmt"
-	. "./network"
+	"./network"
 	. "./message"
 	"time"
 )
 
 func main(){
 
-	//var msg Message 
-	themessage := Message{1,2,3}
-	msg := make(chan Message,1)
-	msg <- themessage
-	msgrec := make(chan Message,1)
 
+	fromMain := make(chan Message, 100)
+	toMain := make(chan Message, 100)
+	go network.Manager(fromMain, toMain)
 
-	go UDPsend(msg)
-	go UDPListen(msgrec)
-	fmt.Println("Hei")
-
+	mes := Message{Source: 1, Floor: 1, Target: 1, ID: 1, IP: 1}
+	i := 0
  for {
+ 	i = i + 1
  	select {
- 	case m:= <-msgrec:
- 		fmt.Println(m)
- 	case <- time.Tick(10 * time.Second):
- 		msg <- Message{1,1,1}
-
-
+ 	case m:= <- toMain:
+ 		fmt.Println(m.ID)
+ 	case <- time.Tick(500 * time.Millisecond):
+ 		fromMain <- mes
+ 		mes.ID = i
  	}
 
  }
-/*
-io_set_bit(int channel)
-
-func io_set_bit(channel int)
-	C.io_set_bit(C.int(channel))
-*/
 }

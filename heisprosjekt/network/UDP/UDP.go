@@ -5,7 +5,7 @@ import (
 	"strings"
 	"encoding/json"
 	"fmt"
-	. ".././message"
+	. "../.././message"
 	)
 
 const (PORT = ":20020")
@@ -49,7 +49,7 @@ func UDPsend(channel chan Message) (bool) {
 	}
 }
 
-func UDPListen(channel chan Message)(bool){
+func UDPlisten(channel chan Message)(bool){
 
 	//Connect to network
 	UDPRecAddr, err := net.ResolveUDPAddr("udp",PORT)
