@@ -8,21 +8,21 @@ import (
 	//"fmt"
 )
 
-func ip_broadcast(ip int, UDPsend chan Message) {
+func ip_broadcast(ip_key int, UDPsend chan Message) {
 
-	UDPsend <- Message{IP: ip, ID: 1}
+	UDPsend <- Message{IP: ip_key, ID: 1}
 	time.Sleep(100 * time.Millisecond)
 
 }
 
 func Manager(fromMain chan Message, toMain chan Message) {
 
-	IP := 10
+	ip_key := int(addr[1].String()[12] - '0') * 100 + int(addr[1].String()[13] - '0') * 10 + int(addr[1].String()[14] - '0')
 
 	sendChan := make(chan Message, 50)
 	recieveChan := make(chan Message, 50)
 
-	go ip_broadcast(IP, sendChan)
+	go ip_broadcast(ip_key, sendChan)
 	go UDPsend(sendChan)
 	go UDPlisten(recieveChan)
 
@@ -30,7 +30,8 @@ func Manager(fromMain chan Message, toMain chan Message) {
 		select {
 		case message := <-recieveChan:
 
-			toMain <- message
+			if message.ID = IP
+				
 
 		case message := <-fromMain:
 
