@@ -1,13 +1,15 @@
 package elev_manager
 
 import (
+	. "./network"
+	. "./message"
 	. "./fsm"
 )
 
 type elev_manager struct{
 	master int
 	self_id int
-	external_orders[N_FLOORS*2-2]  //This is where the orders from the floor panels are put. These orders are broadcasted to all elevators, 
+	external_orders[N_FLOORS*2-2]  int //This is where the orders from the floor panels are put. These orders are broadcasted to all elevators, 
 	elevators map[int] *Elevator //creates a hash table with 'int' as a keyType, and '*Elevator' as a valueType
 }
 
@@ -15,15 +17,22 @@ func Em_checkButtons() int {
 	return Hello()
 }
 
+func Em_makeElevManager() elev_manager{
+	var e elev_manager
+
+	//set all parameters of the struct
+	return e
+}
+
 
 /*
 Check all buttons to see if any action must be performed, and initialize an action
 */
-func Fsm_checkAllButtons(){
+func Em_checkAllFloorButtons(){
 	for floor := 0; floor < 4; floor++ {
 		for buttonType := 0; buttonType < 3; buttonType++{
 			if ElevGetButtonSignal(buttonType, floor) {
-				Fsm_handleButtonPressed(buttonType, floor)
+				Em_handleFloorButtonPressed(buttonType, floor)
 			}
 		}
 	}
@@ -33,22 +42,24 @@ func Fsm_checkAllButtons(){
 /*
 Perform an action based on a button being pressed
 */
-func (e * Elevator) Fsm_handleButtonPressed(e Elevator, buttonType int, floor int) { 
+func (e * elev_manager) Em_handleFloorButtonPressed(buttonType int, floor int) { 
 
 
 	if buttonType != 2 {
+		UDPsend
 		//broadcast button order to the master. Also remember to send direction 'dir'.
 	}
+	else {
 
-	else{
+		//The elevator panel has been used (inside the elevator), and the internal orders of this elevator should be updated. 
 		switch floor {
 		case 0:
-			e.elevList[floor] = 1
+			e.elevators[self_id].internal_orders[floor] = 1
 		case 3:
-			e.elevList[floor+2] = 1
+			e.elevators[self_id].internal_orders[floor+2] = 1
 		default:
-			e.elevList[floor] = 1
-			e.elevList[floor+2] = 1
+			e.elevators[self_id].internal_orders[floor] = 1
+			e.elevators[self_id].internal_orders[floor+2] = 1
 		}
 	}
 }

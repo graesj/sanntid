@@ -19,14 +19,14 @@ const (
 )
 
 type Elevator struct {
-	State    int
-	Dir      int
-	Floor    int
-	elevList [N_FLOORS*2 - 2]byte
+	State           int
+	Dir             int
+	Floor           int
+	internal_orders [N_FLOORS*2 - 2]byte
 }
 
 /*		 floor:  0  1  2  3		dir:
-  elevList[6] =              [*  *  *		up
+  internal_orders[6] =              [*  *  *		up
 			   *  *  *];	down
 */
 
@@ -64,30 +64,6 @@ func Fsm_createElev() {
 	e.State = STATE_IDLE
 
 	for i := 0; i < N_FLOORS*2-2; i++ {
-		e.elevList[i] = 0
-	}
-}
-
-func Fsm_buttonPressed(e Elevator, buttonType int, floor int) {
-
-	switch e.State {
-	case STATE_IDLE:
-		Fsm_checkButton(e, buttonType, floor)
-		//put on display lights
-		e.State = STATE_RUNNING
-		break
-	case STATE_RUNNING:
-		Fsm_checkButton(e, buttonType, floor)
-		//put on display lights
-		break
-	case STATE_DOOROPEN:
-		if floor != e.Floor {
-			Fsm_checkButton(e, buttonType, floor)
-			//put on display lights
-		}
-		break
-	case STATE_STOP:
-		//alert the janitor, and start playing music for the stuck passengers...
-		break
+		internal_orders[i] = 0
 	}
 }
