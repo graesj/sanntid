@@ -1,13 +1,16 @@
-package main 
+package main
 
-import(
-
+import (
 	. "./elev_manager"
-	"fmt"
+	. "./elev_manager/fsm"
+
+	//"fmt"
+	//"time"
 )
 
-func main(){
-	for {
-		fmt.Println(Em_checkButtons())
-	}
+func main() {
+
+	Em_checkButtons()
+	Fsm_createElev()
+
 }
