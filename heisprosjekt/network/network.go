@@ -1,85 +1,41 @@
-package UPD
+package network
 
 import (
-	"net"
-	"strings"
-	"encoding/json"
-	"fmt"
+	. "./UDP"
+	"time"
+	//"net"
 	. ".././message"
-	)
+	//"fmt"
+)
 
-const (PORT = ":20020")
+func ip_broadcast(ip int, UDPsend chan Message) {
 
+	UDPsend <- Message{IP: ip, ID: 1}
+	time.Sleep(100 * time.Millisecond)
 
-//Sending and receiving data from UDP-multicast-network
-func CheckError(err error) (bool) {
-    if err  != nil {
-        fmt.Println("Error: " , err)
-        return true
-
-    }
-    return false
 }
 
-func UDPsend(channel chan Message) (bool) {
+func Manager(fromMain chan Message, toMain chan Message) {
 
-	//Connect to UDP network
-	Addr := []string{"129.241.187.255", PORT}
-	broadcastUDP, err := net.ResolveUDPAddr("udp", strings.Join(Addr, ""))
-	if(CheckError(err)) {
-		return false
-	}
+	IP := 10
 
-	broadcastConn, err := net.DialUDP("udp", nil, broadcastUDP)
-	if CheckError(err) {
-		return false
-	}
+	sendChan := make(chan Message, 50)
+	recieveChan := make(chan Message, 50)
 
-	//Close connection after packet is sent/or fails to send
-	defer broadcastConn.Close()
-	//Send packet
+	go ip_broadcast(IP, sendChan)
+	go UDPsend(sendChan)
+	go UDPlisten(recieveChan)
 
 	for {
-		buf, err := json.Marshal(<- channel) //JavaScript Object Notation, used for data 
-											 //interchanging
-											 //Channels for semaphore
-		if (!CheckError(err)) {
-			broadcastConn.Write(buf)
+		select {
+		case message := <-recieveChan:
+
+			toMain <- message
+
+		case message := <-fromMain:
+
+			sendChan <- message
 		}
 	}
-}
 
-func UDPListen(channel chan Message)(bool){
-
-	//Connect to network
-	UDPRecAddr, err := net.ResolveUDPAddr("udp",PORT)
-	if(CheckError(err)){
-		return false
-	}
-
-	UDPConn, err := net.ListenUDP("udp", UDPRecAddr)
-	if(CheckError(err)){
-		return false
-	}
-
-	//Close connection after receiving is complete
-	defer UDPConn.Close()
-
-	//HEY! LISTEN NA'VI
-	buf := make([]byte, 2048)
-	trimmed_buf := make([]byte, 1)
-	var received_message Message
-
-	for {
-		n, _, err := UDPConn.ReadFromUDP(buf)
-		CheckError(err)
-		trimmed_buf = buf[:n]
-		err = json.Unmarshal(trimmed_buf, &received_message)
-		if err == nil {
-			channel <- received_message
-		}
-
-	}
-	fmt.Println("Shi")
-	return true
 }
