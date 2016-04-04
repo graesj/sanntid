@@ -22,11 +22,11 @@ type Elevator struct {
 	State           int
 	Dir             int
 	Floor           int
-	internal_orders [N_FLOORS*2 - 2]byte
+	Internal_orders [N_FLOORS*2 - 2]byte
 }
 
 /*		 floor:  0  1  2  3		dir:
-  internal_orders[6] =              [*  *  *		up
+  internal_orders[6] =   [*  *  *		up
 			   *  *  *];	down
 */
 
@@ -38,10 +38,8 @@ func Hello() int {
 	return 0
 }
 
-func Fsm_createElev() {
+func (e Elevator) Fsm_initiateElev() {
 	ElevInit() //This function is necessary to reset all hardware
-
-	var e Elevator
 
 	if ElevGetFloorSensorSignal() == -1 {
 		e.Dir = UP
@@ -64,6 +62,7 @@ func Fsm_createElev() {
 	e.State = STATE_IDLE
 
 	for i := 0; i < N_FLOORS*2-2; i++ {
-		internal_orders[i] = 0
+		e.Internal_orders[i] = 0
 	}
+	fmt.Println("Initialized")
 }

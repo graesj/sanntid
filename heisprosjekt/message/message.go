@@ -1,9 +1,9 @@
 package message
 
 type Message struct {
-
 	Source int
-	Floor int
+	Floor  int
 	Target int
-	SizeOfQueue int 
+	IP     int
+	ID     int
 }
