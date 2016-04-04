@@ -13,6 +13,7 @@ func main() {
 	fromMain := make(chan Message, 100)
 	toMain := make(chan Message, 100)
 	go network.Manager(fromMain, toMain)
+	go checkButtons(fromMain)
 
 	mes := Message{Source: 1, Floor: 1, Target: 1, ID: 1, IP: 1}
 	i := 0

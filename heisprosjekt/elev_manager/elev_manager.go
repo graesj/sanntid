@@ -11,6 +11,7 @@ type elev_manager struct{
 	self_id int
 	external_orders[N_FLOORS*2-2]  int //This is where the orders from the floor panels are put. These orders are broadcasted to all elevators, 
 	elevators map[int] *Elevator //creates a hash table with 'int' as a keyType, and '*Elevator' as a valueType
+	message_id int
 }
 
 func Em_checkButtons() int {
@@ -28,11 +29,11 @@ func Em_makeElevManager() elev_manager{
 /*
 Check all buttons to see if any action must be performed, and initialize an action
 */
-func Em_checkAllFloorButtons(){
+func Em_checkAllFloorButtons(fromMain chan){
 	for floor := 0; floor < 4; floor++ {
 		for buttonType := 0; buttonType < 3; buttonType++{
 			if ElevGetButtonSignal(buttonType, floor) {
-				Em_handleFloorButtonPressed(buttonType, floor)
+				Em_handleFloorButtonPressed(buttonType, floor, fromMain chan)
 			}
 		}
 	}
@@ -46,8 +47,9 @@ func (e * elev_manager) Em_handleFloorButtonPressed(buttonType int, floor int) {
 
 
 	if buttonType != 2 {
-		UDPsend
-		//broadcast button order to the master. Also remember to send direction 'dir'.
+			message := Message[ID: FLOOR_BUTTON_PRESSED, DIR: UP, FLOOR: 3]
+			fromMain <- message
+
 	}
 	else {
 
