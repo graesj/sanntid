@@ -3,14 +3,16 @@ package network
 import (
 	. "./UDP"
 	"time"
-	//"net"
+	"net"
 	. ".././message"
 	//"fmt"
 )
 
+var con_timer map[int]*time.Timer
+
 func ip_broadcast(ip_key int, UDPsend chan Message) {
 
-	UDPsend <- Message{Source: ip_key, Id: ID}
+	UDPsend <- Message{Source: ip_key, ID: SELF_ID}
 	time.Sleep(100 * time.Millisecond)
 
 }
@@ -27,7 +29,7 @@ func Manager(fromMain chan Message, toMain chan Message) {
 	go UDPlisten(recieveChan)
 
 
-	con_timer := make(map[int]*time.Timer)
+	con_timer = make(map[int]*time.Timer)
 
 
 
@@ -35,20 +37,19 @@ func Manager(fromMain chan Message, toMain chan Message) {
 		select {
 		case message := <-recieveChan:
 
-			if message.ID = IP {
-				if (con_timer[message.IP] != 0){ //The ip_key already has a running Timer
-					con_timer[message.IP].Reset(3*time.Second)
+			if message.ID == SELF_ID {
+				_, present := con_timer[message.Source]
 
-				}
-				else { //new elevator
-					con_timer[message.IP].AfterFunc(3*time.Second, remove_elev(message.IP))
-					message.ID := NEW_ELEVATOR
+				if (present) { //The ip_key already has a running Timer
+					con_timer[message.Source].Reset(3*time.Second)
+
+				} else { //new elevator
+					con_timer[message.Source]= time.AfterFunc(3*time.Second,func() {remove_elev(message.Source, toMain)})
+					message.ID = NEW_ELEVATOR
 					
 					toMain <- message
 				}
-			}
-
-			else{
+			} else{
 				toMain <- message
 			}
 
@@ -63,8 +64,8 @@ func Manager(fromMain chan Message, toMain chan Message) {
 }
 
 
-func remove_elev(ip_key int){
-	m := Message{IP: ip_key, ID = REMOVE_ELEVATOR}
+func remove_elev(ip_key int, toMain chan Message){
+	m := Message{Source: ip_key, ID: REMOVE_ELEVATOR}
 	toMain <- m
 	delete(con_timer,ip_key)
 }

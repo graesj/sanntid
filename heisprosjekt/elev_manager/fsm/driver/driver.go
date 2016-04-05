@@ -5,8 +5,24 @@ package driver
 #cgo LDFLAGS: -lcomedi -lm
 #include "elev.h"
 */
-
 import "C"
+import (
+	"time"
+	. "../../.././message"
+)
+
+const (
+	N_FLOORS = 4
+	DIR_UP   = 1
+	DIR_DOWN = -1
+	DIR_STOP = 0
+
+	//STATES (Golang doesn't have enums)
+	STATE_IDLE     = 0
+	STATE_RUNNING  = 1
+	STATE_DOOROPEN = 2
+	STATE_STOP     = 3
+)
 
 func ElevInit() {
 	C.elev_init()
@@ -44,44 +60,32 @@ func ElevSetStopLamp(value int) {
 	C.elev_set_stop_lamp(C.int(value))
 }
 
-func CheckButtons(fromMain chan, e Elevator){
+func StopAndOpenDoor() {
+	ElevSetMotorDirection(DIR_STOP)
+	ElevSetDoorOpenLamp(1)
+	//wait 3 seconds
+	time.Sleep(time.Second * 2) //use something else than sleep
+	ElevSetDoorOpenLamp(0)
+}
+
+func CheckButtons(buttonChan chan Message) {
 	for floor := 0; floor < 4; floor++ {
 		for buttonType := 0; buttonType < 3; buttonType++{
-			if ElevGetButtonSignal(buttonType, floor) {
+			if ElevGetButtonSignal(buttonType, floor) == 1 {
 				if (buttonType == 2){
-					//Put de i e sine interne ordre
 					
-				}
+					buttonMessage := Message{ID: BUTTON_INTERNAL, Floor: floor}
+					buttonChan <- buttonMessage
+					time.Sleep(250*time.Millisecond)
+					
+				} else {
 
-				else {
-					message := Message{Id: BUTTON, Dir: buttonType, Floor: floor}
-					fromMain <- message
+					buttonMessage := Message{ID: BUTTON_EXTERNAL, ButtonType: buttonType, Floor: floor}
+					buttonChan <- buttonMessage
+					time.Sleep(250*time.Millisecond)
 
 				}
 			}
-		}
-	}
-}
-
-func (e * elev_manager) Em_handleFloorButtonPressed(buttonType int, floor int) { 
-
-
-	if buttonType != 2 {
-			message := Message[ID: FLOOR_BUTTON_PRESSED, DIR: UP, FLOOR: 3]
-			fromMain <- message
-
-	}
-	else {
-
-		//The elevator panel has been used (inside the elevator), and the internal orders of this elevator should be updated. 
-		switch floor {
-		case 0:
-			e.elevators[self_id].internal_orders[floor] = 1
-		case 3:
-			e.elevators[self_id].internal_orders[floor+2] = 1
-		default:
-			e.elevators[self_id].internal_orders[floor] = 1
-			e.elevators[self_id].internal_orders[floor+2] = 1
 		}
 	}
 }
