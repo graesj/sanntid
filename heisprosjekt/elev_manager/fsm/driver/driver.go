@@ -6,6 +6,22 @@ package driver
 #include "elev.h"
 */
 import "C"
+import (
+	"time"
+)
+
+const (
+	N_FLOORS = 4
+	DIR_UP   = 1
+	DIR_DOWN = -1
+	DIR_STOP = 0
+
+	//STATES (Golang doesn't have enums)
+	STATE_IDLE     = 0
+	STATE_RUNNING  = 1
+	STATE_DOOROPEN = 2
+	STATE_STOP     = 3
+)
 
 func ElevInit() {
 	C.elev_init()
@@ -41,4 +57,12 @@ func ElevSetFloorLamp(floor int) {
 
 func ElevSetStopLamp(value int) {
 	C.elev_set_stop_lamp(C.int(value))
+}
+
+func StopAndOpenDoor() {
+	ElevSetMotorDirection(DIR_STOP)
+	ElevSetDoorOpenLamp(1)
+	//wait 3 seconds
+	time.Sleep(time.Second * 2) //use something else than sleep
+	ElevSetDoorOpenLamp(0)
 }

@@ -5,7 +5,6 @@ import (
 	//. ".././network"
 	. "./fsm"
 	. "./fsm/driver"
-	//"fmt"
 )
 
 type elev_manager struct {
@@ -52,24 +51,70 @@ func (e *elev_manager) Em_handleFloorButtonPressed(buttonType int, floor int) {
 	} else {
 
 		//The elevator panel has been used (inside the elevator), and the internal orders of this elevator should be updated.
-		switch floor {
-		case 0:
-			e.Elevators[e.Self_id].Internal_orders[floor] = 1
-		case 3:
-			e.Elevators[e.Self_id].Internal_orders[floor+2] = 1
-		default:
-			e.Elevators[e.Self_id].Internal_orders[floor] = 1
-			e.Elevators[e.Self_id].Internal_orders[floor+2] = 1
+
+		e.Elevators[e.Self_id].Internal_orders[0][floor] = 1
+		e.Elevators[e.Self_id].Internal_orders[1][floor] = 1
+
+	}
+}
+
+func (e *elev_manager) Em_processElevOrders() {
+	check4DirChange := 1
+	switch e.Elevators[e.Self_id].State {
+	case STATE_IDLE:
+		e.Elevators[e.Self_id].State = STATE_RUNNING
+		//Send message to master to inform him that you are available
+	case STATE_RUNNING:
+		switch e.Elevators[e.Self_id].Dir {
+		case DIR_UP:
+			for floor := e.Elevators[e.Self_id].Floor; floor < N_FLOORS; floor++ {
+				if e.Elevators[e.Self_id].Internal_orders[0][floor] == 1 {
+					check4DirChange = 0
+					ElevSetMotorDirection(DIR_UP)
+					if ElevGetFloorSensorSignal() == floor {
+						StopAndOpenDoor()
+						e.Elevators[e.Self_id].Floor = floor
+						e.Em_UpdateInternalOrders(floor)
+					}
+				}
+			}
+			if check4DirChange == 1 {
+				e.Elevators[e.Self_id].Dir = DIR_STOP
+			}
+		case DIR_DOWN:
+			for floor := e.Elevators[e.Self_id].Floor; floor >= 0; floor-- {
+				if e.Elevators[e.Self_id].Internal_orders[1][floor] == 1 {
+					check4DirChange = 0
+					ElevSetMotorDirection(DIR_DOWN)
+					if ElevGetFloorSensorSignal() == floor {
+						StopAndOpenDoor()
+						e.Elevators[e.Self_id].Floor = floor
+						e.Em_UpdateInternalOrders(floor)
+					}
+				}
+			}
+			if check4DirChange == 1 {
+				e.Elevators[e.Self_id].Dir = DIR_STOP
+			}
+		case DIR_STOP:
+			check4DirChange = 1
+			for floor := e.Elevators[e.Self_id].Floor; floor < N_FLOORS; floor++ {
+				if e.Elevators[e.Self_id].Internal_orders[0][floor] == 1 {
+					e.Elevators[e.Self_id].Dir = DIR_UP
+					break
+				}
+			}
+			for floor := e.Elevators[e.Self_id].Floor; floor >= 0; floor-- {
+				if e.Elevators[e.Self_id].Internal_orders[1][floor] == 1 {
+					e.Elevators[e.Self_id].Dir = DIR_DOWN
+					break
+				}
+			}
 		}
 	}
 }
 
-func (e *elev_manager) Em_processElevOrders() {
-	switch e.Elevator[e.Self_id].State {
-	case STATE_IDLE:
-		for floor:= 0; floor < N_FLOORS; floor++ {
-			
-		}
-	case STATE_RUNNING:
-	}	
+func (e *elev_manager) Em_UpdateInternalOrders(floor int) {
+	e.Elevators[e.Self_id].Internal_orders[0][floor] = 0
+	e.Elevators[e.Self_id].Internal_orders[1][floor] = 0
 }
