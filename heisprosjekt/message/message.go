@@ -1,9 +1,15 @@
 package message
 
-type Message struct {
+const (
+	IP          = 1
+	ELEV_STRUCT = 2
+	BUTTON      = 3
+)
 
+type Message struct {
 	Source int
-	Floor int
+	Floor  int
 	Target int
-	SizeOfQueue int 
+	e      Elevator
+	Id     int
 }

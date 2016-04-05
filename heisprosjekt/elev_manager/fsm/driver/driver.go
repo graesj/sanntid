@@ -5,6 +5,7 @@ package driver
 #cgo LDFLAGS: -lcomedi -lm
 #include "elev.h"
 */
+
 import "C"
 
 func ElevInit() {
@@ -41,4 +42,46 @@ func ElevSetFloorLamp(floor int) {
 
 func ElevSetStopLamp(value int) {
 	C.elev_set_stop_lamp(C.int(value))
+}
+
+func CheckButtons(fromMain chan, e Elevator){
+	for floor := 0; floor < 4; floor++ {
+		for buttonType := 0; buttonType < 3; buttonType++{
+			if ElevGetButtonSignal(buttonType, floor) {
+				if (buttonType == 2){
+					//Put de i e sine interne ordre
+					
+				}
+
+				else {
+					message := Message{Id: BUTTON, Dir: buttonType, Floor: floor}
+					fromMain <- message
+
+				}
+			}
+		}
+	}
+}
+
+func (e * elev_manager) Em_handleFloorButtonPressed(buttonType int, floor int) { 
+
+
+	if buttonType != 2 {
+			message := Message[ID: FLOOR_BUTTON_PRESSED, DIR: UP, FLOOR: 3]
+			fromMain <- message
+
+	}
+	else {
+
+		//The elevator panel has been used (inside the elevator), and the internal orders of this elevator should be updated. 
+		switch floor {
+		case 0:
+			e.elevators[self_id].internal_orders[floor] = 1
+		case 3:
+			e.elevators[self_id].internal_orders[floor+2] = 1
+		default:
+			e.elevators[self_id].internal_orders[floor] = 1
+			e.elevators[self_id].internal_orders[floor+2] = 1
+		}
+	}
 }

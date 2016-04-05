@@ -10,7 +10,7 @@ import (
 
 func ip_broadcast(ip_key int, UDPsend chan Message) {
 
-	UDPsend <- Message{IP: ip_key, ID: IP_ADDRESS}
+	UDPsend <- Message{Source: ip_key, Id: ID}
 	time.Sleep(100 * time.Millisecond)
 
 }
@@ -35,7 +35,7 @@ func Manager(fromMain chan Message, toMain chan Message) {
 		select {
 		case message := <-recieveChan:
 
-			if message.ID = IP_ADDRESS {
+			if message.ID = IP {
 				if (con_timer[message.IP] != 0){ //The ip_key already has a running Timer
 					con_timer[message.IP].Reset(3*time.Second)
 
@@ -43,7 +43,7 @@ func Manager(fromMain chan Message, toMain chan Message) {
 				else { //new elevator
 					con_timer[message.IP].AfterFunc(3*time.Second, remove_elev(message.IP))
 					message.ID := NEW_ELEVATOR
-
+					
 					toMain <- message
 				}
 			}
