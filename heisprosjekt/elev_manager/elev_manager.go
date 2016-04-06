@@ -2,13 +2,12 @@ package elev_manager
 
 import (
 	. ".././message"
-	//. ".././network"
+	. ".././network"
 	. "./fsm"
 	. "./fsm/driver"
 	. "fmt"
 	. ".././structs"
 	"time"
-	"net"
 )
 
 type elev_manager struct {
@@ -20,13 +19,11 @@ type elev_manager struct {
 
 func Em_makeElevManager() elev_manager {
 	var e elev_manager
- 	addr, _ := net.InterfaceAddrs()
-	e.Self_id = int(addr[1].String()[12]-'0')*100 + int(addr[1].String()[13]-'0')*10 + int(addr[1].String()[14]-'0')
 	e.Elevators = make(map[int]*Elevator)
-	e.Self_id = 0
+	e.Self_id = GetLastNumbersOfIp()
 	e.Elevators[e.Self_id] = new(Elevator)
 	Print("FØR")
-	Fsm_initiateElev()
+	//Fsm_initiateElev()
 	Println("ETTER")
 	e.Elevators[e.Self_id].Dir = DIR_STOP
 	e.Elevators[e.Self_id].Floor = 0
@@ -41,11 +38,12 @@ func (e *elev_manager) Em_newElevator(elev Elevator){
 
 
 	e.Elevators[elev.Self_id] = &elev
-	Println("Ny heis er lagt til med self_id: %d",elev.Self_id)
-	Println("Lagt inn i lista: %d", e.Elevators[elev.Self_id].Self_id)
+	Print("Ny heis er lagt til med self_id:")
+	Println(elev.Self_id)
+	Println("Lagt inn i lista: ", e.Elevators[elev.Self_id].Self_id)
 	if elev.Self_id < e.Self_id {
 		e.master = elev.Self_id
-		Println("Master var: %d", e.master)
+		Print("Den nye heisen ble master")
 	}
 }
 

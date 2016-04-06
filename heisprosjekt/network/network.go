@@ -4,6 +4,7 @@ import (
 	. "../message"
 	. "./UDP"
 	"time"
+	"net"
 	//"fmt"
 //	. ".././elev_manager"
 	//. ".././elev_manager/fsm"
@@ -59,4 +60,10 @@ func remove_elev(ip_key int, toMain chan Message) {
 	m := Message{Source: ip_key, ID: REMOVE_ELEVATOR}
 	toMain <- m
 	delete(con_timer, ip_key)
+}
+func GetLastNumbersOfIp() int {
+	addr, _ := net.InterfaceAddrs()
+	ip := int(addr[1].String()[12]-'0')*100 + int(addr[1].String()[13]-'0')*10 + int(addr[1].String()[14]-'0')
+
+	return ip
 }
