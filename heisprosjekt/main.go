@@ -7,7 +7,7 @@ import (
 	. "./network"
 
 	. "fmt"
-	//"time"
+	"time"
 )
 
 func main() {
@@ -20,11 +20,11 @@ func main() {
 	go Manager(fromMain, toMain)
 	go CheckButtons(buttonChan)
 
-	//msg := Message{Source: 1, Floor: 1, Target: 1, ID: 1}
+	BroadCastElevatorInfo(e, fromMain)
+	broadCastTimer := time.AfterFunc(d, f)
 	i := 0
 
 	for {
-		i = i + 1
 
 		select {
 		case message := <-toMain:
@@ -33,7 +33,7 @@ func main() {
 
 			case NEW_ELEVATOR:
 				Println("ny heis")
-				//e.newElevator(message) //Skal legge til den nye heisen, og sjekke hvem som er master
+				e.newElevator(message) //Skal legge til den nye heisen, og sjekke hvem som er master
 
 			case REMOVE_ELEVATOR:
 				//e.RemoveElevator(message.Target)

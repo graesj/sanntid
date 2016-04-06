@@ -10,7 +10,7 @@ import (
 )
 
 type elev_manager struct {
-	master          int
+	master          bool 
 	Self_id         int
 	external_orders [N_FLOORS*2 - 2]int //This is where the orders from the floor panels are put. These orders are broadcasted to all Elevators,
 	Elevators       map[int]*Elevator   //creates a hash table with 'int' as a keyType, and '*Elevator' as a valueType
@@ -18,12 +18,25 @@ type elev_manager struct {
 
 func Em_makeElevManager() elev_manager {
 	var e elev_manager
+ 	addr, _ := net.InterfaceAddrs()
+	e.Self_id = int(addr[1].String()[12]-'0')*100 + int(addr[1].String()[13]-'0')*10 + int(addr[1].String()[14]-'0')
 	e.Elevators = make(map[int]*Elevator)
 	e.Self_id = 0
 	e.Elevators[e.Self_id] = new(Elevator)
 	e.Elevators[e.Self_id].Fsm_initiateElev()
+	e.master = true
 
 	return e
+}
+
+func (e *elev_manager) Em_newElevator(message Message){
+
+	e.Elevators[message.SELF_ID] = Elevator{}
+
+	if message.SELF_ID < e.Self_id {
+		e.master = false
+	}
+
 }
 
 func (e *elev_manager) Em_processElevOrders() {
