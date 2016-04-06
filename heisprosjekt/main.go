@@ -1,9 +1,10 @@
 package main
 
 import (
+	. "./elev_manager"
+	. "./elev_manager/fsm/driver"
 	. "./message"
-	"./network"
-	"./elev_manager"
+	. "./network"
 	//"fmt"
 	//"time"
 )
@@ -14,10 +15,11 @@ func main() {
 	fromMain := make(chan Message, 100)
 	toMain := make(chan Message, 100)
 
-	go network.Manager(fromMain, toMain)
-	go CheckButtons(fromMain, e)
+	go e.Em_processElevOrders()
+	go Manager(fromMain, toMain)
+	go CheckButtons(fromMain)
 
-	mes := Message{Source: 1, Floor: 1, Target: 1, ID: 1, IP: 1}
+	//msg := Message{Source: 1, Floor: 1, Target: 1, ID: 1}
 	i := 0
 
 	for {
@@ -25,38 +27,38 @@ func main() {
 		select {
 		case message := <-toMain:
 
-			switch message.Id {
+			switch message.ID {
 
 			case NEW_ELEVATOR:
-				e.newElevator(message) //Skal legge til den nye heisen, og sjekke hvem som er master
+				//e.newElevator(message) //Skal legge til den nye heisen, og sjekke hvem som er master
 
 			case REMOVE_ELEVATOR:
-				e.removeElevator(message.Source)
+				//e.RemoveElevator(message.Target)
 
-			/*case GENERAL_UPDATE:
+				/*case GENERAL_UPDATE:
 				if message.Source != e.Id {
 					e.updateElevators(message)
 				}
-*/
-			//case CALCULATE_COST:
-			//	e.calculateCostOfOrder()
+				*/
+				//case CALCULATE_COST:
+				//	e.calculateCostOfOrder()
 
-			//case BUTTON_EXTERNAL:
-			//	if(e.isMaster()){
-					//En funksjon som ber alle kalkulere kosten for å ta oppdraget.
-			//	}
+				//case BUTTON_EXTERNAL:
+				//	if(e.isMaster()){
+				//En funksjon som ber alle kalkulere kosten for å ta oppdraget.
+				//	}
 			}
 
-		case mes <- toMain:
-			fromMain <- mes
-			mes.ID = i
+		//case msg <- toMain:
+		//	fromMain <- msg
+		//msg.ID = i
 
-		case buttonMessage := <- buttonChan:
-			if buttonMessage.ID = BUTTON_EXTERNAL {
-				fromMain <- button
+		case buttonMessage := <-buttonChan:
+			if buttonMessage.ID == BUTTON_EXTERNAL {
+				//fromMain <- button
 
-			} else if buttonMessage.ID = BUTTON_INTERNAL {
-				e.Em_handleFloorButtonPressed(buttonMessage.ButtonType,buttonMessage.Floor)
+			} else if buttonMessage.ID == BUTTON_INTERNAL {
+				//e.Em_handleFloorButtonPressed(buttonMessage.ButtonType, buttonMessage.Floor)
 			}
 
 		}

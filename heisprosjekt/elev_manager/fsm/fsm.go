@@ -5,13 +5,21 @@ import (
 	"fmt"
 )
 
+const (
+	//STATES (Golang doesn't have enums)
+	STATE_IDLE     = 0
+	STATE_RUNNING  = 1
+	STATE_DOOROPEN = 2
+	STATE_STOP     = 3
+)
+
 type Elevator struct {
 	State           int
 	Dir             int
 	Floor           int
 	Internal_orders [2][N_FLOORS]byte //both external and internal orders
-	External_orders [2][N_FLOORS]byte //orders from the external panel 
-								      //Just for backup
+	External_orders [2][N_FLOORS]byte //orders from the external panel
+	//Just for backup
 }
 
 /*		 floor:  0  1  2  3		dir:

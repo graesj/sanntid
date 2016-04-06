@@ -5,6 +5,7 @@ import (
 	//. ".././network"
 	. "./fsm"
 	. "./fsm/driver"
+	"time"
 )
 
 type elev_manager struct {
@@ -24,7 +25,6 @@ func Em_makeElevManager() elev_manager {
 	return e
 }
 
-
 func (e *elev_manager) Em_processElevOrders() {
 	check4DirChange := 1
 	switch e.Elevators[e.Self_id].State {
@@ -39,9 +39,7 @@ func (e *elev_manager) Em_processElevOrders() {
 					check4DirChange = 0
 					ElevSetMotorDirection(DIR_UP)
 					if ElevGetFloorSensorSignal() == floor {
-						StopAndOpenDoor()
-						e.Elevators[e.Self_id].Floor = floor
-						e.Em_UpdateInternalOrders(floor)
+						e.StopAndOpenDoor(floor)
 					}
 				}
 			}
@@ -54,9 +52,7 @@ func (e *elev_manager) Em_processElevOrders() {
 					check4DirChange = 0
 					ElevSetMotorDirection(DIR_DOWN)
 					if ElevGetFloorSensorSignal() == floor {
-						StopAndOpenDoor()
-						e.Elevators[e.Self_id].Floor = floor
-						e.Em_UpdateInternalOrders(floor)
+						e.StopAndOpenDoor(floor)
 					}
 				}
 			}
@@ -78,7 +74,13 @@ func (e *elev_manager) Em_processElevOrders() {
 				}
 			}
 		}
+	case STATE_DOOROPEN:
+		time.AfterFunc(time.Second*3, func() { e.doorTimeout() })
 	}
+}
+
+func (e *elev_manager) doorTimeout() {
+	e.Elevators[e.Self_id].State = STATE_RUNNING
 }
 
 func (e *elev_manager) Em_UpdateInternalOrders(floor int) { //HEI BEDRE NAVN DA
@@ -88,6 +90,24 @@ func (e *elev_manager) Em_UpdateInternalOrders(floor int) { //HEI BEDRE NAVN DA
 
 func (e *elev_manager) Em_NewElevator(elevMessage Message) {
 
-	//e.Elevators[elevMessage.Source] = Elevator{} 
+	//e.Elevators[elevMessage.Source] = Elevator{}
 
+}
+
+func (e *elev_manager) StopAndOpenDoor(floor int) { //needs a better name
+	ElevSetMotorDirection(DIR_STOP)
+	e.Elevators[e.Self_id].Floor = floor
+	e.Em_UpdateInternalOrders(floor)
+	ElevSetDoorOpenLamp(1)
+	e.Elevators[e.Self_id].State = STATE_DOOROPEN
+}
+
+func (e *elev_manager) NewElevator(msg Message) {
+
+}
+
+func (e *elev_manager) RemoveElevator(target int) {
+	if e.Self_id == target {
+
+	}
 }

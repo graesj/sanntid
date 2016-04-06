@@ -7,8 +7,8 @@ package driver
 */
 import "C"
 import (
-	"time"
 	. "../../.././message"
+	"time"
 )
 
 const (
@@ -16,12 +16,6 @@ const (
 	DIR_UP   = 1
 	DIR_DOWN = -1
 	DIR_STOP = 0
-
-	//STATES (Golang doesn't have enums)
-	STATE_IDLE     = 0
-	STATE_RUNNING  = 1
-	STATE_DOOROPEN = 2
-	STATE_STOP     = 3
 )
 
 func ElevInit() {
@@ -60,29 +54,21 @@ func ElevSetStopLamp(value int) {
 	C.elev_set_stop_lamp(C.int(value))
 }
 
-func StopAndOpenDoor() {
-	ElevSetMotorDirection(DIR_STOP)
-	ElevSetDoorOpenLamp(1)
-	//wait 3 seconds
-	time.Sleep(time.Second * 2) //use something else than sleep
-	ElevSetDoorOpenLamp(0)
-}
-
 func CheckButtons(buttonChan chan Message) {
 	for floor := 0; floor < 4; floor++ {
-		for buttonType := 0; buttonType < 3; buttonType++{
+		for buttonType := 0; buttonType < 3; buttonType++ {
 			if ElevGetButtonSignal(buttonType, floor) == 1 {
-				if (buttonType == 2){
-					
+				if buttonType == 2 {
+
 					buttonMessage := Message{ID: BUTTON_INTERNAL, Floor: floor}
 					buttonChan <- buttonMessage
-					time.Sleep(250*time.Millisecond)
-					
+					time.Sleep(250 * time.Millisecond)
+
 				} else {
 
 					buttonMessage := Message{ID: BUTTON_EXTERNAL, ButtonType: buttonType, Floor: floor}
 					buttonChan <- buttonMessage
-					time.Sleep(250*time.Millisecond)
+					time.Sleep(250 * time.Millisecond)
 
 				}
 			}
