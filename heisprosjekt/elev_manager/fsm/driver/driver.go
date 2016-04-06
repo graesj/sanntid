@@ -8,6 +8,7 @@ package driver
 import "C"
 import (
 	. "../../.././message"
+	"fmt"
 	"time"
 )
 
@@ -16,6 +17,10 @@ const (
 	DIR_UP   = 1
 	DIR_DOWN = -1
 	DIR_STOP = 0
+
+	BTN_UP   = 0
+	BTN_DOWN = 1
+	BTN_CMD  = 2
 )
 
 func ElevInit() {
@@ -55,21 +60,26 @@ func ElevSetStopLamp(value int) {
 }
 
 func CheckButtons(buttonChan chan Message) {
-	for floor := 0; floor < 4; floor++ {
-		for buttonType := 0; buttonType < 3; buttonType++ {
-			if ElevGetButtonSignal(buttonType, floor) == 1 {
-				if buttonType == 2 {
-
-					buttonMessage := Message{ID: BUTTON_INTERNAL, Floor: floor}
-					buttonChan <- buttonMessage
-					time.Sleep(250 * time.Millisecond)
+	for {
+		for floor := 0; floor < 4; floor++ {
+			for buttonType := 0; buttonType < 3; buttonType++ {
+				if (floor == 0 && buttonType == 1) || (floor == N_FLOORS-1 && buttonType == 0) {
 
 				} else {
+					if ElevGetButtonSignal(buttonType, floor) == 1 {
+						fmt.Println("trykker")
+						if buttonType == 2 {
+							buttonMessage := Message{ID: BUTTON_INTERNAL, Floor: floor}
+							buttonChan <- buttonMessage
+							time.Sleep(250 * time.Millisecond)
 
-					buttonMessage := Message{ID: BUTTON_EXTERNAL, ButtonType: buttonType, Floor: floor}
-					buttonChan <- buttonMessage
-					time.Sleep(250 * time.Millisecond)
+						} else {
+							buttonMessage := Message{ID: BUTTON_EXTERNAL, ButtonType: buttonType, Floor: floor}
+							buttonChan <- buttonMessage
+							time.Sleep(250 * time.Millisecond)
 
+						}
+					}
 				}
 			}
 		}

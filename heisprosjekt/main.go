@@ -5,31 +5,34 @@ import (
 	. "./elev_manager/fsm/driver"
 	. "./message"
 	. "./network"
-	//"fmt"
+
+	. "fmt"
 	//"time"
 )
 
 func main() {
 	e := Em_makeElevManager()
-	buttonChan := make(chan Message)
+	buttonChan := make(chan Message, 100)
 	fromMain := make(chan Message, 100)
 	toMain := make(chan Message, 100)
 
 	go e.Em_processElevOrders()
 	go Manager(fromMain, toMain)
-	go CheckButtons(fromMain)
+	go CheckButtons(buttonChan)
 
 	//msg := Message{Source: 1, Floor: 1, Target: 1, ID: 1}
 	i := 0
 
 	for {
 		i = i + 1
+
 		select {
 		case message := <-toMain:
 
 			switch message.ID {
 
 			case NEW_ELEVATOR:
+				Println("ny heis")
 				//e.newElevator(message) //Skal legge til den nye heisen, og sjekke hvem som er master
 
 			case REMOVE_ELEVATOR:
@@ -47,6 +50,11 @@ func main() {
 				//	if(e.isMaster()){
 				//En funksjon som ber alle kalkulere kosten for å ta oppdraget.
 				//	}
+
+			case BUTTON_EXTERNAL:
+				Println("hhhhhhhhei")
+				e.Em_AddExternalOrders(message.Floor, message.ButtonType)
+
 			}
 
 		//case msg <- toMain:
@@ -54,11 +62,14 @@ func main() {
 		//msg.ID = i
 
 		case buttonMessage := <-buttonChan:
+
 			if buttonMessage.ID == BUTTON_EXTERNAL {
-				//fromMain <- button
+				fromMain <- buttonMessage
+				Println("shalla")
 
 			} else if buttonMessage.ID == BUTTON_INTERNAL {
-				//e.Em_handleFloorButtonPressed(buttonMessage.ButtonType, buttonMessage.Floor)
+				e.Em_AddInternalOrders(buttonMessage.Floor)
+				Println("bais")
 			}
 
 		}

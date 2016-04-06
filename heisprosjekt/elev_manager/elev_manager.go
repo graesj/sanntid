@@ -5,6 +5,7 @@ import (
 	//. ".././network"
 	. "./fsm"
 	. "./fsm/driver"
+	. "fmt"
 	"time"
 )
 
@@ -26,66 +27,119 @@ func Em_makeElevManager() elev_manager {
 }
 
 func (e *elev_manager) Em_processElevOrders() {
-	check4DirChange := 1
-	switch e.Elevators[e.Self_id].State {
-	case STATE_IDLE:
-		e.Elevators[e.Self_id].State = STATE_RUNNING
-		//Send message to master to inform him that you are available
-	case STATE_RUNNING:
-		switch e.Elevators[e.Self_id].Dir {
-		case DIR_UP:
-			for floor := e.Elevators[e.Self_id].Floor; floor < N_FLOORS; floor++ {
-				if e.Elevators[e.Self_id].Internal_orders[0][floor] == 1 {
-					check4DirChange = 0
-					ElevSetMotorDirection(DIR_UP)
-					if ElevGetFloorSensorSignal() == floor {
-						e.StopAndOpenDoor(floor)
+	for {
+		Println(e.Elevators[e.Self_id].Internal_orders)
+		//Println(e.Elevators[e.Self_id].State)
+		check4DirChange := 1
+		switch e.Elevators[e.Self_id].State {
+		case STATE_IDLE:
+			e.Elevators[e.Self_id].State = STATE_RUNNING
+			//Send message to master to inform him that you are available
+			/*for  floor := 0, floor < 3, floor++ {
+				if e.Elevators[e.Self_id].Internal_orders[0][floor] == 1 || e.Elevators[e.Self_id].Internal_orders[1][floor] == 1 {
+					e.Elevators[e.Self_id].State = STATE_RUNNING
+				}
+			}*/
+		case STATE_RUNNING:
+			switch e.Elevators[e.Self_id].Dir {
+			case DIR_UP:
+				for floor := e.Elevators[e.Self_id].Floor; floor < N_FLOORS; floor++ {
+					if e.Elevators[e.Self_id].Internal_orders[0][floor] == 1 {
+						check4DirChange = 0
+						ElevSetMotorDirection(DIR_UP)
+						if ElevGetFloorSensorSignal() == floor {
+							e.StopAndOpenDoor(floor)
+						}
+					}
+				}
+				if check4DirChange == 1 {
+					e.Elevators[e.Self_id].Dir = DIR_STOP
+				}
+			case DIR_DOWN:
+				for floor := e.Elevators[e.Self_id].Floor; floor >= 0; floor-- {
+					if e.Elevators[e.Self_id].Internal_orders[1][floor] == 1 {
+						check4DirChange = 0
+						ElevSetMotorDirection(DIR_DOWN)
+						if ElevGetFloorSensorSignal() == floor {
+							e.StopAndOpenDoor(floor)
+						}
+					}
+				}
+				if check4DirChange == 1 {
+					e.Elevators[e.Self_id].Dir = DIR_STOP
+				}
+			case DIR_STOP:
+				check4DirChange = 1
+				for floor := e.Elevators[e.Self_id].Floor; floor < N_FLOORS; floor++ {
+					if e.Elevators[e.Self_id].Internal_orders[0][floor] == 1 {
+						e.Elevators[e.Self_id].Dir = DIR_UP
+						break
+					}
+				}
+				for floor := e.Elevators[e.Self_id].Floor; floor >= 0; floor-- {
+					if e.Elevators[e.Self_id].Internal_orders[1][floor] == 1 {
+						e.Elevators[e.Self_id].Dir = DIR_DOWN
+						break
 					}
 				}
 			}
-			if check4DirChange == 1 {
-				e.Elevators[e.Self_id].Dir = DIR_STOP
-			}
-		case DIR_DOWN:
-			for floor := e.Elevators[e.Self_id].Floor; floor >= 0; floor-- {
-				if e.Elevators[e.Self_id].Internal_orders[1][floor] == 1 {
-					check4DirChange = 0
-					ElevSetMotorDirection(DIR_DOWN)
-					if ElevGetFloorSensorSignal() == floor {
-						e.StopAndOpenDoor(floor)
-					}
-				}
-			}
-			if check4DirChange == 1 {
-				e.Elevators[e.Self_id].Dir = DIR_STOP
-			}
-		case DIR_STOP:
-			check4DirChange = 1
-			for floor := e.Elevators[e.Self_id].Floor; floor < N_FLOORS; floor++ {
-				if e.Elevators[e.Self_id].Internal_orders[0][floor] == 1 {
-					e.Elevators[e.Self_id].Dir = DIR_UP
-					break
-				}
-			}
-			for floor := e.Elevators[e.Self_id].Floor; floor >= 0; floor-- {
-				if e.Elevators[e.Self_id].Internal_orders[1][floor] == 1 {
-					e.Elevators[e.Self_id].Dir = DIR_DOWN
-					break
-				}
-			}
+		case STATE_DOOROPEN:
+			ElevSetMotorDirection(DIR_STOP)
+
 		}
-	case STATE_DOOROPEN:
-		time.AfterFunc(time.Second*3, func() { e.doorTimeout() })
 	}
 }
 
-func (e *elev_manager) doorTimeout() {
+func (e *elev_manager) doorTimeout(floor int) {
+	ElevSetDoorOpenLamp(0)
+	e.Em_RemoveOrders(floor)
+
 	e.Elevators[e.Self_id].State = STATE_RUNNING
 }
 
-func (e *elev_manager) Em_UpdateInternalOrders(floor int) { //HEI BEDRE NAVN DA
+func (e *elev_manager) Em_RemoveOrders(floor int) { //HEI BEDRE NAVN DA
+
+	if e.Elevators[Self_if].Dir == DIR_DOWN
 	e.Elevators[e.Self_id].Internal_orders[0][floor] = 0
 	e.Elevators[e.Self_id].Internal_orders[1][floor] = 0
+
+	if e.Elevators[e.Self_id].Dir == DIR_DOWN {
+		e.Elevators[e.Self_id].External_orders[1][floor] = 1
+	} else if e.Elevators[e.Self_id].Dir == DIR_UP {
+		e.Elevators[e.Self_id].External_orders[0][floor] = 1
+	}
+
+}
+
+func (e *elev_manager) Em_AddInternalOrders(floor int) {
+	e.Elevators[e.Self_id].Internal_orders[0][floor] = 1
+	e.Elevators[e.Self_id].Internal_orders[1][floor] = 1
+}
+
+func (e *elev_manager) Em_AddExternalOrders(floor int, buttonType int) {
+	if buttonType == BTN_UP {
+		if floor == 0 {
+			e.Elevators[e.Self_id].Internal_orders[0][floor] = 1
+			e.Elevators[e.Self_id].Internal_orders[1][floor] = 1
+
+			e.Elevators[e.Self_id].External_orders[0][floor] = 1
+			e.Elevators[e.Self_id].External_orders[1][floor] = 1
+		} else {
+			e.Elevators[e.Self_id].Internal_orders[0][floor] = 1
+			e.Elevators[e.Self_id].External_orders[0][floor] = 1
+		}
+	} else if buttonType == BTN_DOWN {
+		if floor == 3 {
+			e.Elevators[e.Self_id].Internal_orders[0][floor] = 1
+			e.Elevators[e.Self_id].Internal_orders[1][floor] = 1
+
+			e.Elevators[e.Self_id].External_orders[0][floor] = 1
+			e.Elevators[e.Self_id].External_orders[1][floor] = 1
+		} else {
+			e.Elevators[e.Self_id].Internal_orders[1][floor] = 1
+			e.Elevators[e.Self_id].External_orders[1][floor] = 1
+		}
+	}
 }
 
 func (e *elev_manager) Em_NewElevator(elevMessage Message) {
@@ -96,10 +150,12 @@ func (e *elev_manager) Em_NewElevator(elevMessage Message) {
 
 func (e *elev_manager) StopAndOpenDoor(floor int) { //needs a better name
 	ElevSetMotorDirection(DIR_STOP)
+	Println("stopping")
 	e.Elevators[e.Self_id].Floor = floor
-	e.Em_UpdateInternalOrders(floor)
 	ElevSetDoorOpenLamp(1)
+	time.AfterFunc(time.Second*3, func() { e.doorTimeout(floor) })
 	e.Elevators[e.Self_id].State = STATE_DOOROPEN
+
 }
 
 func (e *elev_manager) NewElevator(msg Message) {
