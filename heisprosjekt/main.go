@@ -5,7 +5,7 @@ import (
 	. "./elev_manager/fsm/driver"
 	. "./message"
 	. "./network"
-
+	//. "./utilities"
 	. "fmt"
 	"time"
 )
@@ -20,9 +20,8 @@ func main() {
 	go Manager(fromMain, toMain)
 	go CheckButtons(buttonChan)
 
-	BroadCastElevatorInfo(e, fromMain)
-	broadCastTimer := time.AfterFunc(d, f)
-	i := 0
+	
+	broadcastTicker := time.NewTicker(1*time.Second).C
 
 	for {
 
@@ -30,10 +29,6 @@ func main() {
 		case message := <-toMain:
 
 			switch message.ID {
-
-			case NEW_ELEVATOR:
-				Println("ny heis")
-				e.newElevator(message) //Skal legge til den nye heisen, og sjekke hvem som er master
 
 			case REMOVE_ELEVATOR:
 				//e.RemoveElevator(message.Target)
@@ -55,11 +50,20 @@ func main() {
 				Println("hhhhhhhhei")
 				e.Em_AddExternalOrders(message.Floor, message.ButtonType)
 
-			}
+			case ELEVATOR_DATA:
+				if message.Elevator.Self_id == e.Self_id {
+					Println("Mottok egen melding")
+				} else {
+					Println("Mottok ny melding")
+					_, present := e.Elevators[message.Elevator.Self_id]
 
-		//case msg <- toMain:
-		//	fromMain <- msg
-		//msg.ID = i
+					if present { //Update the elevatordata
+						e.Em_elevatorUpdate(message.Elevator)
+					} else {
+						e.Em_newElevator(message.Elevator)
+					}
+				}
+			}
 
 		case buttonMessage := <-buttonChan:
 
@@ -72,6 +76,12 @@ func main() {
 				Println("bais")
 			}
 
+		case <- broadcastTicker:
+			BroadcastElevatorInfo(*e.Elevators[e.Self_id], fromMain)
+			Println(e.Self_id)
+			Println(e.Elevators[e.Self_id].Dir)
+			Println(e.Elevators[e.Self_id].Floor)
+			Println(e.Elevators[e.Self_id].Internal_orders)
 		}
 	}
 }

@@ -1,7 +1,8 @@
 package message
 
 import (
-	. ".././elev_manager/fsm"
+
+	. "../structs"
 )
 
 const (
@@ -20,7 +21,7 @@ type Message struct {
 	Source     int
 	Floor      int
 	ButtonType int
-	e          Elevator
+	Elevator   Elevator
 	Target     int
 	ID         int
 }

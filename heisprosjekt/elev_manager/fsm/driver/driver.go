@@ -10,8 +10,9 @@ import (
 	. "../../.././message"
 	"fmt"
 	"time"
+	. "../../.././structs"
 )
-
+/*
 const (
 	N_FLOORS = 4
 	DIR_UP   = 1
@@ -22,6 +23,8 @@ const (
 	BTN_DOWN = 1
 	BTN_CMD  = 2
 )
+
+*/
 
 func ElevInit() {
 	C.elev_init()

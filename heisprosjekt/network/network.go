@@ -1,11 +1,13 @@
 package network
 
 import (
-	. ".././message"
+	. "../message"
 	. "./UDP"
 	"time"
 	//"fmt"
-	. ".././elev_manager"
+//	. ".././elev_manager"
+	//. ".././elev_manager/fsm"
+	. "../structs"
 )
 
 var con_timer map[int]*time.Timer
@@ -13,11 +15,9 @@ var con_timer map[int]*time.Timer
 func BroadcastElevatorInfo(e Elevator, UDPsend chan Message) {
 
 	UDPsend <- Message{Source: e.Self_id, ID: ELEVATOR_DATA, Elevator: e}
-	time.Sleep(100 * time.Millisecond)
-
 }
 
-func Manager(fromMain chan Message, toMain chan Message, e Elevator) {
+func Manager(fromMain chan Message, toMain chan Message) {
 
 	sendChan := make(chan Message, 50)
 	recieveChan := make(chan Message, 50)

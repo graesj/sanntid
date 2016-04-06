@@ -3,6 +3,8 @@ package fsm
 import (
 	. "./driver"
 	"fmt"
+	. "../.././structs"
+	//. "../"
 )
 
 const (
@@ -13,14 +15,9 @@ const (
 	STATE_STOP     = 3
 )
 
-type Elevator struct {
-	State           int
-	Dir             int
-	Floor           int
-	Internal_orders [2][N_FLOORS]byte //both external and internal orders
-	External_orders [2][N_FLOORS]byte //orders from the external panel
-	//Just for backup
-}
+
+
+
 
 /*		 floor:  0  1  2  3		dir:
   internal_orders[6] =   [*  *  *		up
@@ -31,25 +28,27 @@ type Elevator struct {
 Creates an elevator struct object. Initializes the elevator: Runs to first floor, and sets all elevator parameters.
 */
 
-func (e Elevator) Fsm_initiateElev() {
+func Fsm_initiateElev() {
 	ElevInit() //This function is necessary to reset all hardware
 
 	if ElevGetFloorSensorSignal() == -1 {
-		e.Dir = DIR_UP
+		//e.Dir = DIR_UP
 		ElevSetMotorDirection(DIR_UP)
 		for ElevGetFloorSensorSignal() == -1 {
 		}
 	}
-
+	fmt.Println("KJOR OPP")
 	ElevSetMotorDirection(DIR_STOP)
 
 	if ElevGetFloorSensorSignal() != 0 {
-		e.Dir = DIR_DOWN
-		ElevSetMotorDirection(DIR_DOWN)
+		//e.Dir = DIR_DOWN
+		
 		for ElevGetFloorSensorSignal() != 0 {
+			ElevSetMotorDirection(DIR_DOWN)
 		}
 	}
 	ElevSetMotorDirection(DIR_STOP)
+	/*
 	e.Dir = DIR_STOP
 	e.Floor = 0
 	e.State = STATE_IDLE
@@ -58,5 +57,6 @@ func (e Elevator) Fsm_initiateElev() {
 		e.Internal_orders[0][i] = 0
 		e.Internal_orders[1][i] = 0
 	}
+	*/
 	fmt.Println("Initialized")
 }
