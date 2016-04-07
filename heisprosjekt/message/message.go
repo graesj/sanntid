@@ -15,6 +15,7 @@ const (
 	BUTTON_EXTERNAL = 4 //Constant for messages containing orders from external panels
 	REMOVE_ELEVATOR = 5
 	ELEVATOR_DATA   = 6
+	ORDER_COMMAND   = 7
 )
 
 type Message struct {

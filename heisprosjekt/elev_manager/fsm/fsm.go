@@ -28,7 +28,7 @@ const (
 Creates an elevator struct object. Initializes the elevator: Runs to first floor, and sets all elevator parameters.
 */
 
-func Fsm_initiateElev() {
+func (e *Elevator) Fsm_initiateElev() {
 	ElevInit() //This function is necessary to reset all hardware
 
 	if ElevGetFloorSensorSignal() == -1 {

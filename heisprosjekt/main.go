@@ -51,21 +51,37 @@ func main() {
 				//	}
 
 			case BUTTON_EXTERNAL:
-				Println("hhhhhhhhei")
-				e.Em_AddExternalOrders(message.Floor, message.ButtonType)
+				if (e.Em_isMaster()){
+					Println("Mottok knapp og er master....")
+					assignID := e.Em_handleExternalOrder(message.ButtonType, message.Floor)
+					message.Source = e.Self_id
+					message.ID = ORDER_COMMAND
+					message.Target = assignID
+					Print("Beste id ble beregnet til å være: ")
+					Println(message.Target)
+					fromMain <- message
+					}
 
 			case ELEVATOR_DATA:
 				if message.Elevator.Self_id == e.Self_id {
 					Println("Mottok egen melding")
 				} else {
-					Println("Mottok ny melding")
+					Println("Mottok annen heismelding...")
 					_, present := e.Elevators[message.Elevator.Self_id]
 
 					if present { //Update the elevatordata
 						e.Em_elevatorUpdate(message.Elevator)
+						Println("Det var en oppdatering")
 					} else {
 						e.Em_newElevator(message.Elevator)
+						Println("Det var en ny heis :D")
 					}
+				}
+
+			case ORDER_COMMAND:
+				if (message.Target == e.Self_id){
+					Println("En ektern kommando fra master ble sent til meg :DDD")
+					e.Em_AddExternalOrders(message.Floor, message.ButtonType)
 				}
 			}
 
@@ -73,7 +89,9 @@ func main() {
 
 			if buttonMessage.ID == BUTTON_EXTERNAL {
 				fromMain <- buttonMessage
-				Println("shalla")
+				//en bool som sier at ordre har blitt sent
+				//kanskje ha en funksjon som sjekker at master plukker den opp
+				Println("Sender eksterntknappetrykk ut")
 
 			} else if buttonMessage.ID == BUTTON_INTERNAL {
 				e.Em_AddInternalOrders(buttonMessage.Floor)
@@ -83,7 +101,7 @@ func main() {
 		case <- broadcastTicker:
 			BroadcastElevatorInfo(*e.Elevators[e.Self_id], fromMain)
 			Println(e.Self_id)
-			Println(e.Elevators[e.Self_id].Dir)
+			Println(e.Elevators[e.Self_id].Current_Dir)
 			Println(e.Elevators[e.Self_id].Floor)
 			Println(e.Elevators[e.Self_id].Internal_orders)
 
