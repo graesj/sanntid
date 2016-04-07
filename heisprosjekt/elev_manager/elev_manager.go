@@ -23,7 +23,7 @@ func Em_makeElevManager() elev_manager {
 	e.Self_id = GetLastNumbersOfIp()
 	e.Elevators[e.Self_id] = new(Elevator)
 	Print("FØR")
-	//Fsm_initiateElev()
+	Fsm_initiateElev()
 	Println("ETTER")
 	e.Elevators[e.Self_id].Dir = DIR_STOP
 	e.Elevators[e.Self_id].Floor = 0
@@ -61,7 +61,7 @@ func (e *elev_manager) Em_processElevOrders() {
 		//Println(e.Elevators[e.Self_id].State)
 		switch e.Elevators[e.Self_id].State {
 		case STATE_IDLE:
-			//e.Elevators[e.Self_id].State = STATE_RUNNING
+			e.Elevators[e.Self_id].State = STATE_RUNNING
 			//Send message to master to inform him that you are available
 			for floor := 0; floor < 3; floor++ {
 				if e.Elevators[e.Self_id].Internal_orders[0][floor] == 1 || e.Elevators[e.Self_id].Internal_orders[1][floor] == 1 {
@@ -72,9 +72,8 @@ func (e *elev_manager) Em_processElevOrders() {
 				switch e.Elevators[e.Self_id].Dir {
 				case DIR_UP:
 					ElevSetMotorDirection(DIR_UP)
-					
 					if Planned_direction == DIR_DOWN {
-						for furthest_floor := N_FLOORS-1; furthest_floor > e.Elevators[e.Self_id].Floor; furthest_floor-- {
+						for furthest_floor = N_FLOORS-1; furthest_floor > e.Elevators[e.Self_id].Floor; furthest_floor-- {
 							if e.Elevators[e.Self_id].Internal_orders[1][furthest_floor] == 1 {
 								break
 							}
@@ -86,14 +85,15 @@ func (e *elev_manager) Em_processElevOrders() {
 						if Planned_direction == DIR_DOWN {
 							if e.Elevators[e.Self_id].Internal_orders[1][Current_floor] == 1 {
 								if furthest_floor == Current_floor{
+									e.Elevators[e.Self_id].Dir = DIR_STOP
 									e.StopAndOpenDoor(Current_floor)
 									
-									e.Elevators[e.Self_id].Dir = DIR_STOP
 									break
 								}
 							}
 						} else if Planned_direction == DIR_UP {
 							if e.Elevators[e.Self_id].Internal_orders[0][Current_floor] == 1 {
+								e.Elevators[e.Self_id].Dir = DIR_STOP
 								e.StopAndOpenDoor(Current_floor)
 								
 							}
@@ -103,7 +103,7 @@ func (e *elev_manager) Em_processElevOrders() {
 					ElevSetMotorDirection(DIR_DOWN)
 					
 					if Planned_direction == DIR_UP {
-						for furthest_floor := 0; furthest_floor < e.Elevators[e.Self_id].Floor; furthest_floor++ {
+						for furthest_floor = 0; furthest_floor < e.Elevators[e.Self_id].Floor; furthest_floor++ {
 							if e.Elevators[e.Self_id].Internal_orders[0][furthest_floor] == 1 {
 								break
 							}
@@ -115,14 +115,16 @@ func (e *elev_manager) Em_processElevOrders() {
 						if Planned_direction == DIR_UP {
 							if e.Elevators[e.Self_id].Internal_orders[0][Current_floor] == 1 {
 								if furthest_floor == Current_floor{
-									e.StopAndOpenDoor(Current_floor)
-									
 									e.Elevators[e.Self_id].Dir = DIR_STOP
+									e.StopAndOpenDoor(Current_floor)
+
+									
 									break
 								}
 							}
 						} else if Planned_direction == DIR_DOWN {
 							if e.Elevators[e.Self_id].Internal_orders[1][Current_floor] == 1 {
+								e.Elevators[e.Self_id].Dir = DIR_STOP
 								e.StopAndOpenDoor(Current_floor)
 								
 							}
@@ -130,6 +132,7 @@ func (e *elev_manager) Em_processElevOrders() {
 					}
 
 				case DIR_STOP:
+					ElevSetMotorDirection(DIR_STOP)
 					furthest_floor = -1
 					Planned_direction = DIR_STOP
 					for floor := 0; floor < N_FLOORS; floor++ {

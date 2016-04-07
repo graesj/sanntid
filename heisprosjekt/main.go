@@ -14,7 +14,7 @@ import (
 
 func main() {
 
-	time.Sleep(time.Second)
+
 	e := Em_makeElevManager()
 	buttonChan := make(chan Message, 100)
 	fromMain := make(chan Message, 100)
@@ -83,9 +83,10 @@ func main() {
 		case <- broadcastTicker:
 			BroadcastElevatorInfo(*e.Elevators[e.Self_id], fromMain)
 			Println(e.Self_id)
-			//Println(e.Elevators[e.Self_id].Dir)
-			//Println(e.Elevators[e.Self_id].Floor)
-			//Println(e.Elevators[e.Self_id].Internal_orders)
+			Println(e.Elevators[e.Self_id].Dir)
+			Println(e.Elevators[e.Self_id].Floor)
+			Println(e.Elevators[e.Self_id].Internal_orders)
+
 		}
 	}
 }

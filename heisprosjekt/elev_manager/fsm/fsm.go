@@ -33,8 +33,9 @@ func Fsm_initiateElev() {
 
 	if ElevGetFloorSensorSignal() == -1 {
 		//e.Dir = DIR_UP
-		ElevSetMotorDirection(DIR_UP)
+		//ElevSetMotorDirection(DIR_UP)
 		for ElevGetFloorSensorSignal() == -1 {
+			fmt.Println(ElevGetFloorSensorSignal())
 		}
 	}
 	fmt.Println("KJOR OPP")
