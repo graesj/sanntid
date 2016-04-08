@@ -24,14 +24,14 @@ func Em_makeElevManager() elev_manager {
 	e.Self_id = GetLastNumbersOfIp()
 	e.Elevators[e.Self_id] = new(Elevator)
 	Print("FØR")
-	//Fsm_initiateElev()
-	e.Elevators[e.Self_id].Fsm_initiateElev()
+	Fsm_initiateElev()
 	Println("ETTER")
 	e.Elevators[e.Self_id].Current_Dir = DIR_STOP
 	e.Elevators[e.Self_id].Planned_Dir = DIR_STOP
-	e.Elevators[e.Self_id].Floor = 0
+	e.Elevators[e.Self_id].Current_Floor = 0
 	e.Elevators[e.Self_id].State = STATE_IDLE
 	e.Elevators[e.Self_id].Self_id = e.Self_id
+	e.Elevators[e.Self_id].Furthest_Floor = -1
 	e.master = e.Self_id
 
 	return e
@@ -77,163 +77,196 @@ func (e *elev_manager) Em_elevatorUpdate(elev Elevator) {
 }
 
 func (e *elev_manager) Em_processElevOrders() {
-	Current_floor := -1
-	furthest_floor := -1
+	current_floor := -1	
 
 	for {
-		//Println(e.Elevators[e.Self_id].Internal_orders)
-		//Println(e.Elevators[e.Self_id].State)
 		switch e.Elevators[e.Self_id].State {
 		case STATE_IDLE:
+			e.Elevators[e.Self_id].Current_Dir = DIR_STOP
 			e.Elevators[e.Self_id].State = STATE_RUNNING
-			//Send message to master to inform him that you are available
-			for floor := 0; floor < 3; floor++ {
-				if e.Elevators[e.Self_id].Internal_orders[0][floor] == 1 || e.Elevators[e.Self_id].Internal_orders[1][floor] == 1 {
-					e.Elevators[e.Self_id].State = STATE_RUNNING
+			/*for floor := 0; floor < 4; floor++ {
+				for buttonType := 0; buttonType <= 3; buttonType++ {
+					if e.Elevators[e.Self_id].Internal_orders[buttonType][floor] == 1 {
+						e.Elevators[e.Self_id].State = STATE_RUNNING
+					}
 				}
-			}
+			}*/
 		case STATE_RUNNING:
 				switch e.Elevators[e.Self_id].Current_Dir {
 				case DIR_UP:
 					ElevSetMotorDirection(DIR_UP)
-					if e.Elevators[e.Self_id].Planned_Dir == DIR_DOWN {
-						for furthest_floor = N_FLOORS-1; furthest_floor > e.Elevators[e.Self_id].Floor; furthest_floor-- {
-							if e.Elevators[e.Self_id].Internal_orders[1][furthest_floor] == 1 {
-								break
-							}
+				
+					current_floor = ElevGetFloorSensorSignal()
+					if current_floor != -1 {
+						e.Elevators[e.Self_id].Current_Floor = current_floor
+						if e.Elevators[e.Self_id].Internal_orders[BTN_CMD][current_floor] == 1 {
+							e.Elevators[e.Self_id].Current_Dir = DIR_STOP
+							e.StopAndOpenDoor(current_floor, BTN_CMD)
 						}
-					}
-					Current_floor = ElevGetFloorSensorSignal()
-					if Current_floor != -1 {
-						e.Elevators[e.Self_id].Floor = Current_floor
 						if e.Elevators[e.Self_id].Planned_Dir == DIR_DOWN {
-							if e.Elevators[e.Self_id].Internal_orders[1][Current_floor] == 1 {
-								if furthest_floor == Current_floor{
+							e.Elevators[e.Self_id].Furthest_Floor = e.calcFurthestFloor(e.Elevators[e.Self_id].Planned_Dir)
+
+							if e.Elevators[e.Self_id].Internal_orders[BTN_DOWN][current_floor] == 1 {
+								if e.Elevators[e.Self_id].Furthest_Floor == current_floor{
+									Println("definately stopping...")
 									e.Elevators[e.Self_id].Current_Dir = DIR_STOP
-									e.StopAndOpenDoor(Current_floor)
-									
+									e.StopAndOpenDoor(current_floor, BTN_DOWN)
 									break
 								}
 							}
 						} else if e.Elevators[e.Self_id].Planned_Dir == DIR_UP {
-							if e.Elevators[e.Self_id].Internal_orders[0][Current_floor] == 1 {
+							if e.Elevators[e.Self_id].Internal_orders[BTN_UP][current_floor] == 1 {
 								e.Elevators[e.Self_id].Current_Dir = DIR_STOP
-								e.StopAndOpenDoor(Current_floor)
-								
+								e.StopAndOpenDoor(current_floor, BTN_UP)
 							}
 						}
 					}
 				case DIR_DOWN:
 					ElevSetMotorDirection(DIR_DOWN)
-					
-					if e.Elevators[e.Self_id].Planned_Dir == DIR_UP {
-						for furthest_floor = 0; furthest_floor < e.Elevators[e.Self_id].Floor; furthest_floor++ {
-							if e.Elevators[e.Self_id].Internal_orders[0][furthest_floor] == 1 {
-								break
-							}
+				
+					current_floor = ElevGetFloorSensorSignal()
+					if current_floor != -1 {
+						e.Elevators[e.Self_id].Current_Floor = current_floor
+						if e.Elevators[e.Self_id].Internal_orders[BTN_CMD][current_floor] == 1 {
+							e.Elevators[e.Self_id].Current_Dir = DIR_STOP
+							e.StopAndOpenDoor(current_floor, BTN_CMD)
 						}
-					}
-					Current_floor = ElevGetFloorSensorSignal()
-					if Current_floor != -1 {
-						e.Elevators[e.Self_id].Floor = Current_floor
 						if e.Elevators[e.Self_id].Planned_Dir == DIR_UP {
-							if e.Elevators[e.Self_id].Internal_orders[0][Current_floor] == 1 {
-								if furthest_floor == Current_floor{
+							e.Elevators[e.Self_id].Furthest_Floor = e.calcFurthestFloor(e.Elevators[e.Self_id].Planned_Dir)
+
+							if e.Elevators[e.Self_id].Internal_orders[BTN_UP][current_floor] == 1 {
+								if e.Elevators[e.Self_id].Furthest_Floor == current_floor{
 									e.Elevators[e.Self_id].Current_Dir = DIR_STOP
-									e.StopAndOpenDoor(Current_floor)
+									e.StopAndOpenDoor(current_floor, BTN_UP)
 									break
 								}
 							}
 						} else if e.Elevators[e.Self_id].Planned_Dir == DIR_DOWN {
-							if e.Elevators[e.Self_id].Internal_orders[1][Current_floor] == 1 {
+							if e.Elevators[e.Self_id].Internal_orders[BTN_DOWN][current_floor] == 1 {
 								e.Elevators[e.Self_id].Current_Dir = DIR_STOP
-								e.StopAndOpenDoor(Current_floor)
-								
+								e.StopAndOpenDoor(current_floor, BTN_DOWN)
 							}
 						}
 					}
-
 				case DIR_STOP:
 					ElevSetMotorDirection(DIR_STOP)
-					furthest_floor = -1
+
+					e.Elevators[e.Self_id].Furthest_Floor = -1
 					e.Elevators[e.Self_id].Planned_Dir = DIR_STOP
-					for floor := 0; floor < N_FLOORS; floor++ {
-						if e.Elevators[e.Self_id].Internal_orders[0][floor] == 1 {
-							e.Elevators[e.Self_id].Planned_Dir = DIR_UP
-							if e.Elevators[e.Self_id].Floor < floor {
-								e.Elevators[e.Self_id].Current_Dir = DIR_UP
-								break
-							} else if e.Elevators[e.Self_id].Floor > floor {
-								e.Elevators[e.Self_id].Current_Dir = DIR_DOWN
-								break
-							}
-						} else if e.Elevators[e.Self_id].Internal_orders[1][floor] == 1 {
-							e.Elevators[e.Self_id].Planned_Dir = DIR_DOWN
-								if e.Elevators[e.Self_id].Floor < floor {
-								e.Elevators[e.Self_id].Current_Dir = DIR_UP
-								break
-							} else if e.Elevators[e.Self_id].Floor > floor {
-								e.Elevators[e.Self_id].Current_Dir = DIR_DOWN
-								break
-							}
-						}
-					}
+					e.check4OrdersAndDirChange()
 				}
 
 		case STATE_DOOROPEN:
 			ElevSetMotorDirection(DIR_STOP)
-
+		case STATE_STOP:
+			Println("Stop button pressed")
+			ElevSetMotorDirection(DIR_STOP)
+			//Set stop lamp
 		}
 	}
 }
 
-func (e *elev_manager) doorTimeout(floor int) {
+func (e *elev_manager) check4OrdersAndDirChange() {
+	for floor := 0; floor < N_FLOORS; floor++ {
+		if e.Elevators[e.Self_id].Internal_orders[BTN_CMD][floor] == 1 {
+			if e.Elevators[e.Self_id].Current_Floor < floor {
+				e.Elevators[e.Self_id].Current_Dir = DIR_UP
+				break
+			} else if e.Elevators[e.Self_id].Current_Floor > floor {
+				e.Elevators[e.Self_id].Current_Dir = DIR_DOWN
+				break
+			}
+		} else if e.Elevators[e.Self_id].Internal_orders[BTN_UP][floor] == 1 {
+			e.Elevators[e.Self_id].Planned_Dir = DIR_UP
+			if e.Elevators[e.Self_id].Current_Floor < floor {
+				e.Elevators[e.Self_id].Current_Dir = DIR_UP
+				break
+			} else if e.Elevators[e.Self_id].Current_Floor > floor {
+				e.Elevators[e.Self_id].Current_Dir = DIR_DOWN
+				break
+			} else{
+				e.StopAndOpenDoor(e.Elevators[e.Self_id].Current_Floor, BTN_UP)
+			}
+		} else if e.Elevators[e.Self_id].Internal_orders[BTN_DOWN][floor] == 1 {
+			e.Elevators[e.Self_id].Planned_Dir = DIR_DOWN
+			if e.Elevators[e.Self_id].Current_Floor < floor {
+				e.Elevators[e.Self_id].Current_Dir = DIR_UP
+				break
+			} else if e.Elevators[e.Self_id].Current_Floor > floor {
+				e.Elevators[e.Self_id].Current_Dir = DIR_DOWN
+				break
+			} else{
+				e.StopAndOpenDoor(e.Elevators[e.Self_id].Current_Floor, BTN_DOWN)
+			}
+		}
+	}
+}
+
+func (e *elev_manager) calcFurthestFloor(planned_dir int) int {
+	switch planned_dir {
+	case DIR_UP:
+		for furthest_floor := 0; furthest_floor < e.Elevators[e.Self_id].Current_Floor; furthest_floor++ {
+			if e.Elevators[e.Self_id].Internal_orders[BTN_UP][furthest_floor] == 1 {
+				return furthest_floor
+			}
+		}
+	case DIR_DOWN:
+		for furthest_floor := N_FLOORS-1; furthest_floor > e.Elevators[e.Self_id].Current_Floor; furthest_floor-- {
+			if e.Elevators[e.Self_id].Internal_orders[BTN_DOWN][furthest_floor] == 1 {
+				return furthest_floor
+			}
+		}
+	case DIR_STOP:
+		Println("THIS IS THE WRONG PLANNED DIR BRUH")
+		return -1
+	}
+	return e.Elevators[e.Self_id].Furthest_Floor
+}
+
+
+func (e *elev_manager) doorTimeout(floor int, button int) {
 	ElevSetDoorOpenLamp(0)
-	e.Em_RemoveOrders(floor)
+	e.Em_RemoveOrders(floor, button)
 
 	e.Elevators[e.Self_id].State = STATE_RUNNING
 }
 
-func (e *elev_manager) Em_RemoveOrders(floor int) { //HEI BEDRE NAVN DA
-
-	e.Elevators[e.Self_id].Internal_orders[0][floor] = 0
-	e.Elevators[e.Self_id].Internal_orders[1][floor] = 0
-	if e.Elevators[e.Self_id].Current_Dir == DIR_DOWN {
-		e.Elevators[e.Self_id].External_orders[1][floor] = 1
-	} else if e.Elevators[e.Self_id].Current_Dir == DIR_UP {
-		e.Elevators[e.Self_id].External_orders[0][floor] = 1
+func (e *elev_manager) Em_RemoveOrders(floor int, button int) { //HEI BEDRE NAVN DA
+	e.Elevators[e.Self_id].Internal_orders[BTN_CMD][floor] = 0
+	switch button {
+	case BTN_UP:
+		e.Elevators[e.Self_id].Internal_orders[BTN_UP][floor] = 0
+	case BTN_DOWN:
+		e.Elevators[e.Self_id].Internal_orders[BTN_DOWN][floor] = 0
+	case BTN_CMD:
+		if e.Elevators[e.Self_id].Planned_Dir == DIR_UP {
+			e.Elevators[e.Self_id].Internal_orders[BTN_UP][floor] = 0
+		} else if e.Elevators[e.Self_id].Planned_Dir == DIR_DOWN {
+			e.Elevators[e.Self_id].Internal_orders[BTN_DOWN][floor] = 0
+		}
 	}
-
 }
 
-func (e *elev_manager) Em_AddInternalOrders(floor int) {
-	e.Elevators[e.Self_id].Internal_orders[0][floor] = 1
-	e.Elevators[e.Self_id].Internal_orders[1][floor] = 1
+func (e *elev_manager) Em_AddInternalOrders(floor int, button int) {
+	switch button {
+	case BTN_UP:
+		e.Elevators[e.Self_id].Internal_orders[BTN_UP][floor] = 1
+	case BTN_DOWN:
+		e.Elevators[e.Self_id].Internal_orders[BTN_DOWN][floor] = 1
+	case BTN_CMD:
+		e.Elevators[e.Self_id].Internal_orders[BTN_CMD][floor] = 1
+	}
 }
 
 func (e *elev_manager) Em_AddExternalOrders(floor int, buttonType int) {
 	if buttonType == BTN_UP {
-		if floor == 0 {
-			e.Elevators[e.Self_id].Internal_orders[0][floor] = 1
-			e.Elevators[e.Self_id].Internal_orders[1][floor] = 1
+			e.Elevators[e.Self_id].Internal_orders[BTN_UP][floor] = 1
+			e.Elevators[e.Self_id].External_orders[BTN_UP][floor] = 1
 
-			e.Elevators[e.Self_id].External_orders[0][floor] = 1
-			e.Elevators[e.Self_id].External_orders[1][floor] = 1
-		} else {
-			e.Elevators[e.Self_id].Internal_orders[0][floor] = 1
-			e.Elevators[e.Self_id].External_orders[0][floor] = 1
-		}
 	} else if buttonType == BTN_DOWN {
-		if floor == 3 {
-			e.Elevators[e.Self_id].Internal_orders[0][floor] = 1
-			e.Elevators[e.Self_id].Internal_orders[1][floor] = 1
-
-			e.Elevators[e.Self_id].External_orders[0][floor] = 1
-			e.Elevators[e.Self_id].External_orders[1][floor] = 1
-		} else {
-			e.Elevators[e.Self_id].Internal_orders[1][floor] = 1
-			e.Elevators[e.Self_id].External_orders[1][floor] = 1
-		}
+			e.Elevators[e.Self_id].Internal_orders[BTN_DOWN][floor] = 1
+			e.Elevators[e.Self_id].External_orders[BTN_DOWN][floor] = 1
+		
 	}
 }
 
@@ -243,11 +276,11 @@ func (e *elev_manager) Em_NewElevator(elevMessage Message) {
 
 }
 
-func (e *elev_manager) StopAndOpenDoor(floor int) { //needs a better name
+func (e *elev_manager) StopAndOpenDoor(floor int, button int) { //needs a better name
 	ElevSetMotorDirection(DIR_STOP)
 	Println("stopping")
 	ElevSetDoorOpenLamp(1)
-	time.AfterFunc(time.Second*3, func() { e.doorTimeout(floor) })
+	time.AfterFunc(time.Second*3, func() { e.doorTimeout(floor, button) })
 	e.Elevators[e.Self_id].State = STATE_DOOROPEN
 
 }
@@ -264,7 +297,7 @@ func (e *elev_manager) RemoveElevator(target int) {
 
 func calculateCost(elev Elevator, buttonType int, floor int) int {
 
-	cost := int(math.Abs(float64((10*(floor - elev.Floor)))))
+	cost := int(math.Abs(float64((10*(floor - elev.Current_Floor)))))
 	numOrders := 0
 	for x := 0; x < 4; x++{
 		for y := 0; y < 3; y++{
@@ -275,15 +308,15 @@ func calculateCost(elev Elevator, buttonType int, floor int) int {
 	}
 	cost = cost + numOrders * 10
 
-	if ((floor - elev.Floor) > 0) && (elev.Planned_Dir == DIR_UP) {
+	if ((floor - elev.Current_Floor) > 0) && (elev.Planned_Dir == DIR_UP) {
 		if buttonType == BTN_UP {
 			cost = cost - 100
 		} 
-	} else if (floor - elev.Floor) < 0 && elev.Planned_Dir == DIR_DOWN{
+	} else if (floor - elev.Current_Floor) < 0 && elev.Planned_Dir == DIR_DOWN{
 		if buttonType == BTN_DOWN {
 			cost = cost - 100
 		}
-	} else if (floor - elev.Floor) == 0 {
+	} else if (floor - elev.Current_Floor) == 0 {
 
 		if elev.Planned_Dir == DIR_STOP {
 			cost = cost - 80 
@@ -296,12 +329,78 @@ func calculateCost(elev Elevator, buttonType int, floor int) int {
 }
 
 
-func costForRealsThough(elev Elevator, buttonType int, floor int) {
+func (e *elev_manager) determine_target_elev(button int, floor int) int{
+	min := N_FLOORS
+	var cost int
+	ideal_elev := e.Self_id
+	for key, elev := range e.Elevators {
+		cost = 0
+		
+		if elev.Current_Floor == floor && (elev.State == STATE_IDLE || elev.State == STATE_DOOROPEN) {
+			return key
+		}
 
-	if elev.Planned_Dir == -1 {
-		//is the queue empty?
-		elev.isQueueEmpty()	
+		if elev.Internal_orders[button][floor] == 1 {
+			return key
+		}
+
+		cost = e.get_cost_for_order(key, elev, button, floor)
+
+		if cost < min {
+			ideal_elev = key
+			min = cost
+		}
+	}
+	return ideal_elev
+}
+
+
+func (e *elev_manager) get_cost_for_order(key int, elev *Elevator, button int, order_floor int) int {
+	search_dir := elev.Planned_Dir
+	search_floor := elev.Current_Floor
+
+	order_floor_passed_once := false
+	cost := 0
+
+	for {
+		if search_floor == 0 && search_dir == DIR_DOWN || search_floor == N_FLOORS-1 && search_dir == DIR_UP {
+			search_dir = 0 - search_dir
+		} else {
+			search_floor += search_dir
+		}
+
+		if search_floor == order_floor {
+			order_floor_passed_once = true
+			if button == BTN_CMD || search_dir == DIR_UP && button == BTN_UP || search_dir == DIR_DOWN && button == BTN_DOWN {
+				break
+			}
+		}
+		
+		if e.orders_on_floor_in_dir(key, search_dir, search_floor) {
+			cost += 3
+		} 
+		
+		if (e.more_orders_in_dir(key, search_dir, search_floor)) || (bool(math.Abs(float64(order_floor - elev.Current_Floor)) > math.Abs(float64(order_floor - search_floor)) && !order_floor_passed_once)) {
+			cost += 1		}
 	}
 
+	return cost
+}
 
+func (e *elev_manager) more_orders_in_dir(id int, dir int, floor int) bool {
+	for i := (floor + dir); i >= 0 && i < N_FLOORS; i = i + dir {
+		if e.Elevators[id].Internal_orders[BTN_CMD][i] == 1 || e.Elevators[id].Internal_orders[BTN_UP][i] == 1 || e.Elevators[id].Internal_orders[BTN_DOWN][i] == 1 {
+			return true
+		}
+	}
+	return false
+}
+
+func (e *elev_manager) orders_on_floor_in_dir(id int, dir int, floor int) bool {
+	//Vår heis
+
+	if e.Elevators[id].Internal_orders[BTN_CMD][floor] == 1 || dir == DIR_UP && e.Elevators[id].Internal_orders[BTN_UP][floor] == 1 || dir == DIR_DOWN && e.Elevators[id].Internal_orders[BTN_DOWN][floor] == 1 {
+		return true
+	}
+	return false
 }

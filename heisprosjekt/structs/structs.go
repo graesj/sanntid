@@ -4,7 +4,8 @@ type Elevator struct {
 	State           int
 	Current_Dir     int
 	Planned_Dir		int
-	Floor           int
+	Current_Floor   int
+	Furthest_Floor	int
 	Self_id 		int 
 	Internal_orders [3][N_FLOORS]byte //both external and internal orders
 	External_orders [2][N_FLOORS]byte //orders from the external panel

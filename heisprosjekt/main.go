@@ -5,6 +5,7 @@ import (
 	. "./elev_manager/fsm/driver"
 	. "./message"
 	. "./network"
+	. "./structs"
 	//. "./utilities"
 	. "fmt"
 	"time"
@@ -94,7 +95,7 @@ func main() {
 				Println("Sender eksterntknappetrykk ut")
 
 			} else if buttonMessage.ID == BUTTON_INTERNAL {
-				e.Em_AddInternalOrders(buttonMessage.Floor)
+				e.Em_AddInternalOrders(buttonMessage.Floor, BTN_CMD)
 				Println("bais")
 			}
 
@@ -102,7 +103,9 @@ func main() {
 			BroadcastElevatorInfo(*e.Elevators[e.Self_id], fromMain)
 			Println(e.Self_id)
 			Println(e.Elevators[e.Self_id].Current_Dir)
-			Println(e.Elevators[e.Self_id].Floor)
+			Println(e.Elevators[e.Self_id].Current_Floor)
+			Println(e.Elevators[e.Self_id].State)
+			Println(e.Elevators[e.Self_id].Planned_Dir)
 			Println(e.Elevators[e.Self_id].Internal_orders)
 
 		}
