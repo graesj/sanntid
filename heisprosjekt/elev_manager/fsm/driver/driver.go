@@ -62,6 +62,10 @@ func ElevSetStopLamp(value int) {
 	C.elev_set_stop_lamp(C.int(value))
 }
 
+func ElevSetButtonLamp(buttonType int, floor int, value int) {
+	C.elev_set_button_lamp(C.elev_button_type_t(int(buttonType)), C.int(floor), C.int(value))
+}
+
 func CheckButtons(buttonChan chan Message) {
 	for {
 		for floor := 0; floor < 4; floor++ {
@@ -71,7 +75,8 @@ func CheckButtons(buttonChan chan Message) {
 				} else {
 					if ElevGetButtonSignal(buttonType, floor) == 1 {
 						fmt.Println("trykker")
-						if buttonType == 2 {
+						if buttonType == BTN_CMD {
+							ElevSetButtonLamp(buttonType, floor, 1)
 							buttonMessage := Message{ID: BUTTON_INTERNAL, Floor: floor}
 							buttonChan <- buttonMessage
 							time.Sleep(250 * time.Millisecond)

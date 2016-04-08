@@ -76,10 +76,13 @@ func (e *elev_manager) Em_elevatorUpdate(elev Elevator) {
 	e.Elevators[elev.Self_id] = &elev
 }
 
-func (e *elev_manager) Em_processElevOrders() {
+func (e *elev_manager) Em_processElevOrders(LampChan chan Message) {
 	current_floor := -1	
 
 	for {
+		if ElevGetObstructionSignal() == 1 {
+			e.Elevators[e.Self_id].State = STATE_DOOROPEN
+		}
 		switch e.Elevators[e.Self_id].State {
 		case STATE_IDLE:
 			e.Elevators[e.Self_id].Current_Dir = DIR_STOP
@@ -101,7 +104,7 @@ func (e *elev_manager) Em_processElevOrders() {
 						e.Elevators[e.Self_id].Current_Floor = current_floor
 						if e.Elevators[e.Self_id].Internal_orders[BTN_CMD][current_floor] == 1 {
 							e.Elevators[e.Self_id].Current_Dir = DIR_STOP
-							e.StopAndOpenDoor(current_floor, BTN_CMD)
+							e.StopAndOpenDoor(current_floor, BTN_CMD, LampChan)
 						}
 						if e.Elevators[e.Self_id].Planned_Dir == DIR_DOWN {
 							e.Elevators[e.Self_id].Furthest_Floor = e.calcFurthestFloor(e.Elevators[e.Self_id].Planned_Dir)
@@ -110,14 +113,14 @@ func (e *elev_manager) Em_processElevOrders() {
 								if e.Elevators[e.Self_id].Furthest_Floor == current_floor{
 									Println("definately stopping...")
 									e.Elevators[e.Self_id].Current_Dir = DIR_STOP
-									e.StopAndOpenDoor(current_floor, BTN_DOWN)
+									e.StopAndOpenDoor(current_floor, BTN_DOWN, LampChan)
 									break
 								}
 							}
 						} else if e.Elevators[e.Self_id].Planned_Dir == DIR_UP {
 							if e.Elevators[e.Self_id].Internal_orders[BTN_UP][current_floor] == 1 {
 								e.Elevators[e.Self_id].Current_Dir = DIR_STOP
-								e.StopAndOpenDoor(current_floor, BTN_UP)
+								e.StopAndOpenDoor(current_floor, BTN_UP, LampChan)
 							}
 						}
 					}
@@ -129,7 +132,7 @@ func (e *elev_manager) Em_processElevOrders() {
 						e.Elevators[e.Self_id].Current_Floor = current_floor
 						if e.Elevators[e.Self_id].Internal_orders[BTN_CMD][current_floor] == 1 {
 							e.Elevators[e.Self_id].Current_Dir = DIR_STOP
-							e.StopAndOpenDoor(current_floor, BTN_CMD)
+							e.StopAndOpenDoor(current_floor, BTN_CMD, LampChan)
 						}
 						if e.Elevators[e.Self_id].Planned_Dir == DIR_UP {
 							e.Elevators[e.Self_id].Furthest_Floor = e.calcFurthestFloor(e.Elevators[e.Self_id].Planned_Dir)
@@ -137,14 +140,14 @@ func (e *elev_manager) Em_processElevOrders() {
 							if e.Elevators[e.Self_id].Internal_orders[BTN_UP][current_floor] == 1 {
 								if e.Elevators[e.Self_id].Furthest_Floor == current_floor{
 									e.Elevators[e.Self_id].Current_Dir = DIR_STOP
-									e.StopAndOpenDoor(current_floor, BTN_UP)
+									e.StopAndOpenDoor(current_floor, BTN_UP, LampChan)
 									break
 								}
 							}
 						} else if e.Elevators[e.Self_id].Planned_Dir == DIR_DOWN {
 							if e.Elevators[e.Self_id].Internal_orders[BTN_DOWN][current_floor] == 1 {
 								e.Elevators[e.Self_id].Current_Dir = DIR_STOP
-								e.StopAndOpenDoor(current_floor, BTN_DOWN)
+								e.StopAndOpenDoor(current_floor, BTN_DOWN, LampChan)
 							}
 						}
 					}
@@ -153,10 +156,13 @@ func (e *elev_manager) Em_processElevOrders() {
 
 					e.Elevators[e.Self_id].Furthest_Floor = -1
 					e.Elevators[e.Self_id].Planned_Dir = DIR_STOP
-					e.check4OrdersAndDirChange()
+					e.check4OrdersAndDirChange(LampChan)
 				}
 
 		case STATE_DOOROPEN:
+			if ElevGetObstructionSignal() == 0 {
+				e.Elevators[e.Self_id].State = STATE_RUNNING
+			}
 			ElevSetMotorDirection(DIR_STOP)
 		case STATE_STOP:
 			Println("Stop button pressed")
@@ -166,7 +172,7 @@ func (e *elev_manager) Em_processElevOrders() {
 	}
 }
 
-func (e *elev_manager) check4OrdersAndDirChange() {
+func (e *elev_manager) check4OrdersAndDirChange(LampChan chan Message) {
 	for floor := 0; floor < N_FLOORS; floor++ {
 		if e.Elevators[e.Self_id].Internal_orders[BTN_CMD][floor] == 1 {
 			if e.Elevators[e.Self_id].Current_Floor < floor {
@@ -185,7 +191,7 @@ func (e *elev_manager) check4OrdersAndDirChange() {
 				e.Elevators[e.Self_id].Current_Dir = DIR_DOWN
 				break
 			} else{
-				e.StopAndOpenDoor(e.Elevators[e.Self_id].Current_Floor, BTN_UP)
+				e.StopAndOpenDoor(e.Elevators[e.Self_id].Current_Floor, BTN_UP, LampChan)
 			}
 		} else if e.Elevators[e.Self_id].Internal_orders[BTN_DOWN][floor] == 1 {
 			e.Elevators[e.Self_id].Planned_Dir = DIR_DOWN
@@ -196,7 +202,7 @@ func (e *elev_manager) check4OrdersAndDirChange() {
 				e.Elevators[e.Self_id].Current_Dir = DIR_DOWN
 				break
 			} else{
-				e.StopAndOpenDoor(e.Elevators[e.Self_id].Current_Floor, BTN_DOWN)
+				e.StopAndOpenDoor(e.Elevators[e.Self_id].Current_Floor, BTN_DOWN, LampChan)
 			}
 		}
 	}
@@ -270,19 +276,34 @@ func (e *elev_manager) Em_AddExternalOrders(floor int, buttonType int) {
 	}
 }
 
+
+func updateFloorLight(floor int) {
+	ElevSetFloorLamp(floor)
+}
+
 func (e *elev_manager) Em_NewElevator(elevMessage Message) {
 
 	//e.Elevators[elevMessage.Source] = Elevator{}
 
 }
 
-func (e *elev_manager) StopAndOpenDoor(floor int, button int) { //needs a better name
+func (e *elev_manager) StopAndOpenDoor(floor int, button int, lampChan chan Message) { //needs a better name
 	ElevSetMotorDirection(DIR_STOP)
 	Println("stopping")
 	ElevSetDoorOpenLamp(1)
+	updateButtonLamp(button, floor, lampChan)
 	time.AfterFunc(time.Second*3, func() { e.doorTimeout(floor, button) })
 	e.Elevators[e.Self_id].State = STATE_DOOROPEN
+}
 
+func updateButtonLamp(button int, floor int, lampChan chan Message) {
+	switch button {
+	case BTN_CMD:
+		ElevSetButtonLamp(button, floor, 0)
+	default:
+		lampMessage := Message{ID: LampID, ButtonType: button, Floor: floor}
+		lampChan <- lampMessage
+	}
 }
 
 func (e *elev_manager) NewElevator(msg Message) {

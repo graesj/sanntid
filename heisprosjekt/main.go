@@ -18,18 +18,18 @@ func main() {
 
 	e := Em_makeElevManager()
 	buttonChan := make(chan Message, 100)
+	LampChan := make(chan Message, 100)
 	fromMain := make(chan Message, 100)
 	toMain := make(chan Message, 100)
 
-	go e.Em_processElevOrders()
+	go e.Em_processElevOrders(LampChan)
 	go Manager(fromMain, toMain)
 	go CheckButtons(buttonChan)
-
 	
 	broadcastTicker := time.NewTicker(1*time.Second).C
 
 	for {
-
+		
 		select {
 		case message := <-toMain:
 
@@ -52,6 +52,7 @@ func main() {
 				//	}
 
 			case BUTTON_EXTERNAL:
+				ElevSetButtonLamp(message.ButtonType, message.Floor, 1)
 				if (e.Em_isMaster()){
 					Println("Mottok knapp og er master....")
 					assignID := e.Em_handleExternalOrder(message.ButtonType, message.Floor)
@@ -84,6 +85,8 @@ func main() {
 					Println("En ektern kommando fra master ble sent til meg :DDD")
 					e.Em_AddExternalOrders(message.Floor, message.ButtonType)
 				}
+			case LampID:
+				ElevSetButtonLamp(message.ButtonType, message.Floor, 0)
 			}
 
 		case buttonMessage := <-buttonChan:
@@ -98,6 +101,8 @@ func main() {
 				e.Em_AddInternalOrders(buttonMessage.Floor, BTN_CMD)
 				Println("bais")
 			}
+		case LampMessage := <- LampChan:
+			fromMain <- LampMessage
 
 		case <- broadcastTicker:
 			BroadcastElevatorInfo(*e.Elevators[e.Self_id], fromMain)

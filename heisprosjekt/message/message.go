@@ -16,6 +16,7 @@ const (
 	REMOVE_ELEVATOR = 5
 	ELEVATOR_DATA   = 6
 	ORDER_COMMAND   = 7
+	LampID			= 8
 )
 
 type Message struct {
