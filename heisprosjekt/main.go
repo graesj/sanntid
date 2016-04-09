@@ -48,6 +48,10 @@ func main() {
 					Print("Beste id ble beregnet til å være: ")
 					Println(message.Target)
 					fromMain <- message
+
+					time.AfterFunc(300*time.Millisecond, func () {e.checkIfOrderIsTaken(message, fromMain))})
+
+
 				}
 
 			case NEW_ELEVATOR:
@@ -73,6 +77,11 @@ func main() {
 				if message.Target == e.Self_id {
 					Println("En ektern kommando fra master ble sent til meg :DDD")
 					e.Em_AddExternalOrders(message.Floor, message.ButtonType)
+					//Generate handshake
+					message.Source = e.Self_id
+					message.Target = e.master
+					message.ID = HANDSHAKE
+					fromMain <- message
 				}
 			case LampID:
 				ElevSetButtonLamp(message.ButtonType, message.Floor, 0)
@@ -82,6 +91,7 @@ func main() {
 
 			if buttonMessage.ID == BUTTON_EXTERNAL {
 				fromMain <- buttonMessage
+
 				//en bool som sier at ordre har blitt sent
 				//kanskje ha en funksjon som sjekker at master plukker den opp
 				Println("Sender eksterntknappetrykk ut")
