@@ -9,12 +9,11 @@ import (
 	//. "./utilities"
 	. "fmt"
 	"time"
-	//"net"
 
+//"net"
 )
 
 func main() {
-
 
 	e := Em_makeElevManager()
 	buttonChan := make(chan Message, 100)
@@ -25,11 +24,11 @@ func main() {
 	go e.Em_processElevOrders(LampChan)
 	go Manager(fromMain, toMain)
 	go CheckButtons(buttonChan)
-	
-	broadcastTicker := time.NewTicker(100*time.Millisecond).C
+
+	broadcastTicker := time.NewTicker(100 * time.Millisecond).C
 
 	for {
-		
+
 		select {
 		case message := <-toMain:
 
@@ -38,10 +37,9 @@ func main() {
 			case REMOVE_ELEVATOR:
 				e.ConnectionTimeout(message.Source, fromMain)
 
-
 			case BUTTON_EXTERNAL:
 				ElevSetButtonLamp(message.ButtonType, message.Floor, 1)
-				if (e.Em_isMaster()){
+				if e.Em_isMaster() {
 					Println("Mottok knapp og er master....")
 					assignID := e.Determine_target_elev(message.ButtonType, message.Floor)
 					message.Source = e.Self_id
@@ -50,29 +48,29 @@ func main() {
 					Print("Beste id ble beregnet til å være: ")
 					Println(message.Target)
 					fromMain <- message
-					}
+				}
 
 			case NEW_ELEVATOR:
 				e.Em_newElevator(message.Elevator)
 
 			case ELEVATOR_DATA:
 				if message.Elevator.Self_id == e.Self_id {
-					Println("Mottok egen melding")
+					//Println("Mottok egen melding")
 				} else {
-					Println("Mottok annen heismelding...")
+					//Println("Mottok annen heismelding...")
 					_, present := e.Elevators[message.Elevator.Self_id]
 
 					if present { //Update the elevatordata
 						e.Em_elevatorUpdate(message.Elevator)
-						Println("Det var en oppdatering")
+						//	Println("Det var en oppdatering")
 					} else {
 						e.Em_newElevator(message.Elevator)
-						Println("Det var en ny heis :D")
+						//Println("Det var en ny heis :D")
 					}
 				}
 
 			case ORDER_COMMAND:
-				if (message.Target == e.Self_id){
+				if message.Target == e.Self_id {
 					Println("En ektern kommando fra master ble sent til meg :DDD")
 					e.Em_AddExternalOrders(message.Floor, message.ButtonType)
 				}
@@ -92,16 +90,16 @@ func main() {
 				e.Em_AddInternalOrders(buttonMessage.Floor, BTN_CMD)
 				Println("bais")
 			}
-		case LampMessage := <- LampChan:
+		case LampMessage := <-LampChan:
 			fromMain <- LampMessage
 
-		case <- broadcastTicker:
+		case <-broadcastTicker:
 			BroadcastElevatorInfo(*e.Elevators[e.Self_id], fromMain)
-			Println(e.Self_id)
-			Println(e.Elevators[e.Self_id].Current_Dir)
-			Println(e.Elevators[e.Self_id].Current_Floor)
-			Println(e.Elevators[e.Self_id].State)
-			Println(e.Elevators[e.Self_id].Planned_Dir)
+			//Println(e.Self_id)
+			///Println(e.Elevators[e.Self_id].Current_Dir)
+			//Println(e.Elevators[e.Self_id].Current_Floor)
+			//Println(e.Elevators[e.Self_id].State)
+			//Println(e.Elevators[e.Self_id].Planned_Dir)
 			Println(e.Elevators[e.Self_id].Internal_orders)
 
 		}
