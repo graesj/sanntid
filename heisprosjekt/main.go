@@ -48,9 +48,7 @@ func main() {
 					Print("Beste id ble beregnet til å være: ")
 					Println(message.Target)
 					fromMain <- message
-
-					time.AfterFunc(300*time.Millisecond, func () {e.checkIfOrderIsTaken(message, fromMain))})
-
+					time.AfterFunc(300*time.Millisecond, func() { e.CheckIfOrderIsTaken(message, fromMain) })
 
 				}
 
@@ -71,17 +69,6 @@ func main() {
 						e.Em_newElevator(message.Elevator)
 						//Println("Det var en ny heis :D")
 					}
-				}
-
-			case ORDER_COMMAND:
-				if message.Target == e.Self_id {
-					Println("En ektern kommando fra master ble sent til meg :DDD")
-					e.Em_AddExternalOrders(message.Floor, message.ButtonType)
-					//Generate handshake
-					message.Source = e.Self_id
-					message.Target = e.master
-					message.ID = HANDSHAKE
-					fromMain <- message
 				}
 			case LampID:
 				ElevSetButtonLamp(message.ButtonType, message.Floor, 0)

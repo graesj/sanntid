@@ -10,7 +10,6 @@ import (
 	"time"
 	"math"
 )
-
 type elev_manager struct {
 	master          int 
 	Self_id         int
@@ -227,22 +226,58 @@ func (e *elev_manager) calcFurthestFloor(planned_dir int) int {
 }
 
 
-func (e *elev_manager) doorTimeout(floor int, button int) {
+func (e *elev_manager) doorTimeout(floor int, button int, lampChan chan Message) {
 	ElevSetDoorOpenLamp(0)
-	e.Em_RemoveOrders(floor, button)
+	e.Em_RemoveOrders(floor, button, lampChan)
 
 	e.Elevators[e.Self_id].State = STATE_RUNNING
 }
 
-func (e *elev_manager) Em_RemoveOrders(floor int, button int) { //HEI BEDRE NAVN DA
+func (e *elev_manager) Em_RemoveOrders(floor int, button int, lampChan chan Message) { //HEI BEDRE NAVN DA
+	isEmpty := false
 	e.Elevators[e.Self_id].Internal_orders[BTN_CMD][floor] = 0
-	
+	ElevSetButtonLamp(button, floor, 0)
 	if e.Elevators[e.Self_id].Planned_Dir == DIR_UP {
+		isEmpty = e.shouldIChangeDir(DIR_UP)
+		if isEmpty {
+			e.Elevators[e.Self_id].Internal_orders[BTN_DOWN][floor] = 0
+			updateButtonLamp(BTN_DOWN, floor, lampChan)
+		}
 		e.Elevators[e.Self_id].Internal_orders[BTN_UP][floor] = 0
+		if floor != N_FLOORS-1 {
+			updateButtonLamp(BTN_UP, floor, lampChan)
+		}
 	} else if e.Elevators[e.Self_id].Planned_Dir == DIR_DOWN {
+		isEmpty = e.shouldIChangeDir(DIR_DOWN)
+		if isEmpty {
+			e.Elevators[e.Self_id].Internal_orders[BTN_UP][floor] = 0
+			updateButtonLamp(BTN_UP, floor, lampChan)
+		}
 		e.Elevators[e.Self_id].Internal_orders[BTN_DOWN][floor] = 0
+		if floor != 0 {
+			updateButtonLamp(BTN_DOWN, floor, lampChan)
+		}
 	}
 }
+
+func (e *elev_manager) shouldIChangeDir(planned_dir int) bool {
+	switch planned_dir {
+	case DIR_UP:
+		for floor := e.Elevators[e.Self_id].Current_Floor; floor < N_FLOORS; floor++ {
+			if e.Elevators[e.Self_id].Internal_orders[BTN_UP][floor] == 1 || e.Elevators[e.Self_id].Internal_orders[BTN_CMD][floor] == 1 {
+				return false
+			}
+		}
+	case DIR_DOWN:
+		for floor := e.Elevators[e.Self_id].Current_Floor; floor >= 0; floor-- {
+			if e.Elevators[e.Self_id].Internal_orders[BTN_DOWN][floor] == 1 || e.Elevators[e.Self_id].Internal_orders[BTN_CMD][floor] == 1 {
+				return false
+			}
+		}
+	}
+	return true
+}
+
 
 func (e *elev_manager) Em_AddInternalOrders(floor int, button int) {
 	switch button {
@@ -282,8 +317,7 @@ func (e *elev_manager) StopAndOpenDoor(floor int, button int, lampChan chan Mess
 	ElevSetMotorDirection(DIR_STOP)
 	Println("stopping")
 	ElevSetDoorOpenLamp(1)
-	updateButtonLamp(button, floor, lampChan)
-	time.AfterFunc(time.Second*3, func() { e.doorTimeout(floor, button) })
+	time.AfterFunc(time.Second*3, func() { e.doorTimeout(floor, button, lampChan) })
 	e.Elevators[e.Self_id].State = STATE_DOOROPEN
 }
 
@@ -472,5 +506,19 @@ func (e *elev_manager) updateMaster(id int) {
 
 	if nyMaster == 1000 {
 		//YOU ARE ALONE HEIS, AND ALONE YOU ARE THE MASTER
+	}
+}
+
+func (e *elev_manager) CheckIfOrderIsTaken(message Message, fromMain chan Message) {
+
+	_, present := e.Elevators[message.Target]
+
+	if present {
+
+		if e.Elevators[message.Target].External_orders[message.ButtonType][message.Floor] != 1 {
+			fromMain <- message
+			Println("Resending message")
+		}
+
 	}
 }
