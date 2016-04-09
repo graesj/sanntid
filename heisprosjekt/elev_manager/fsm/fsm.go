@@ -12,7 +12,6 @@ const (
 	STATE_IDLE     = 0
 	STATE_RUNNING  = 1
 	STATE_DOOROPEN = 2
-	STATE_STOP     = 3
 )
 
 

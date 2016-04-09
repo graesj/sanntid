@@ -32,18 +32,19 @@ func Manager(fromMain chan Message, toMain chan Message) {
 		select {
 		case message := <-recieveChan:
 
-			if message.ID == SELF_ID {
+			if message.ID == ELEVATOR_DATA {
 				_, present := con_timer[message.Source]
 
 				if present { //The ip_key already has a running Timer
-					con_timer[message.Source].Reset(3 * time.Second)
-
+					con_timer[message.Source].Reset(500*time.Millisecond)
+					toMain <- message
 				} else { //new elevator
-					con_timer[message.Source] = time.AfterFunc(3*time.Second, func() { remove_elev(message.Source, toMain) })
+					con_timer[message.Source] = time.AfterFunc(500*time.Millisecond, func() { remove_elev(message.Source, toMain) })
 					message.ID = NEW_ELEVATOR
 
 					toMain <- message
 				}
+
 			} else {
 				toMain <- message
 			}

@@ -50,19 +50,6 @@ func (e *elev_manager) Em_newElevator(elev Elevator){
 	}
 }
 
-func (e *elev_manager) Em_handleExternalOrder(buttonType int, floor int) int{
-	bestID := -1
-	lowestCost := 1000
-	for key, elev:= range e.Elevators {
-		curCost := calculateCost(*elev, buttonType, floor)
-		if curCost < lowestCost {
-			lowestCost = curCost
-			bestID = key
-		}
-	}
-
-	return bestID
-}
 
 func (e *elev_manager) Em_isMaster() bool {
 	if (e.master == e.Self_id){
@@ -84,8 +71,8 @@ func (e *elev_manager) Em_processElevOrders(LampChan chan Message) {
 		case STATE_IDLE:
 			e.Elevators[e.Self_id].Current_Dir = DIR_STOP
 			e.Elevators[e.Self_id].State = STATE_RUNNING
-			/*for floor := 0; floor < 4; floor++ {
-				for buttonType := 0; buttonType <= 3; buttonType++ {
+			/*for floor := 0; floor < N_FLOORS; floor++ {
+				for buttonType := 0; buttonType < N_FLOORS; buttonType++ {
 					if e.Elevators[e.Self_id].Internal_orders[buttonType][floor] == 1 {
 						e.Elevators[e.Self_id].State = STATE_RUNNING
 					}
@@ -94,10 +81,12 @@ func (e *elev_manager) Em_processElevOrders(LampChan chan Message) {
 		case STATE_RUNNING:
 				switch e.Elevators[e.Self_id].Current_Dir {
 				case DIR_UP:
+
 					ElevSetMotorDirection(DIR_UP)
 				
 					current_floor = ElevGetFloorSensorSignal()
 					if current_floor != -1 {
+						updateFloorLight(current_floor)
 						e.Elevators[e.Self_id].Current_Floor = current_floor
 						if e.Elevators[e.Self_id].Internal_orders[BTN_CMD][current_floor] == 1 {
 							e.Elevators[e.Self_id].Current_Dir = DIR_STOP
@@ -125,6 +114,7 @@ func (e *elev_manager) Em_processElevOrders(LampChan chan Message) {
 				
 					current_floor = ElevGetFloorSensorSignal()
 					if current_floor != -1 {
+						updateFloorLight(current_floor)
 						e.Elevators[e.Self_id].Current_Floor = current_floor
 						if e.Elevators[e.Self_id].Internal_orders[BTN_CMD][current_floor] == 1 {
 							e.Elevators[e.Self_id].Current_Dir = DIR_STOP
@@ -157,49 +147,61 @@ func (e *elev_manager) Em_processElevOrders(LampChan chan Message) {
 
 		case STATE_DOOROPEN:
 			ElevSetMotorDirection(DIR_STOP)
-		case STATE_STOP:
-			Println("Stop button pressed")
-			ElevSetMotorDirection(DIR_STOP)
-			//Set stop lamp
 		}
 	}
 }
 
 func (e *elev_manager) check4OrdersAndDirChange(LampChan chan Message) {
+	foundFloor := 0
 	for floor := 0; floor < N_FLOORS; floor++ {
 		if e.Elevators[e.Self_id].Internal_orders[BTN_CMD][floor] == 1 {
+			Println("THIS IS NOT HAPPENING")
 			if e.Elevators[e.Self_id].Current_Floor < floor {
+				Println("finally")
 				e.Elevators[e.Self_id].Current_Dir = DIR_UP
 				e.Elevators[e.Self_id].Planned_Dir = DIR_UP
+				foundFloor = 1
 				break
 			} else if e.Elevators[e.Self_id].Current_Floor > floor {
 				e.Elevators[e.Self_id].Current_Dir = DIR_DOWN
 				e.Elevators[e.Self_id].Planned_Dir = DIR_DOWN
+				foundFloor = 1
 				break
-			}
-		} else if e.Elevators[e.Self_id].Internal_orders[BTN_UP][floor] == 1 {
-			e.Elevators[e.Self_id].Planned_Dir = DIR_UP
-			if e.Elevators[e.Self_id].Current_Floor < floor {
-				e.Elevators[e.Self_id].Current_Dir = DIR_UP
+			} else {
+				e.StopAndOpenDoor(e.Elevators[e.Self_id].Current_Floor, BTN_CMD, LampChan)
 				break
-			} else if e.Elevators[e.Self_id].Current_Floor > floor {
-				e.Elevators[e.Self_id].Current_Dir = DIR_DOWN
-				break
-			} else{
-				e.StopAndOpenDoor(e.Elevators[e.Self_id].Current_Floor, BTN_UP, LampChan)
-			}
-		} else if e.Elevators[e.Self_id].Internal_orders[BTN_DOWN][floor] == 1 {
-			e.Elevators[e.Self_id].Planned_Dir = DIR_DOWN
-			if e.Elevators[e.Self_id].Current_Floor < floor {
-				e.Elevators[e.Self_id].Current_Dir = DIR_UP
-				break
-			} else if e.Elevators[e.Self_id].Current_Floor > floor {
-				e.Elevators[e.Self_id].Current_Dir = DIR_DOWN
-				break
-			} else{
-				e.StopAndOpenDoor(e.Elevators[e.Self_id].Current_Floor, BTN_DOWN, LampChan)
 			}
 		}
+	}
+	if foundFloor == 0 {
+		for floor := 0; floor < N_FLOORS; floor++ {
+			if e.Elevators[e.Self_id].Internal_orders[BTN_UP][floor] == 1 {
+				Println("Y U DO DIS")
+				e.Elevators[e.Self_id].Planned_Dir = DIR_UP
+				if e.Elevators[e.Self_id].Current_Floor < floor {
+					e.Elevators[e.Self_id].Current_Dir = DIR_UP
+					break
+				} else if e.Elevators[e.Self_id].Current_Floor > floor {
+					e.Elevators[e.Self_id].Current_Dir = DIR_DOWN
+					break
+				} else{
+					e.StopAndOpenDoor(e.Elevators[e.Self_id].Current_Floor, BTN_UP, LampChan)
+					break
+				}
+			} else if e.Elevators[e.Self_id].Internal_orders[BTN_DOWN][floor] == 1 {
+				e.Elevators[e.Self_id].Planned_Dir = DIR_DOWN
+				if e.Elevators[e.Self_id].Current_Floor < floor {
+					e.Elevators[e.Self_id].Current_Dir = DIR_UP
+					break
+				} else if e.Elevators[e.Self_id].Current_Floor > floor {
+					e.Elevators[e.Self_id].Current_Dir = DIR_DOWN
+					break
+				} else{
+					e.StopAndOpenDoor(e.Elevators[e.Self_id].Current_Floor, BTN_DOWN, LampChan)
+					break
+				}
+			}
+		}	
 	}
 }
 
@@ -234,17 +236,11 @@ func (e *elev_manager) doorTimeout(floor int, button int) {
 
 func (e *elev_manager) Em_RemoveOrders(floor int, button int) { //HEI BEDRE NAVN DA
 	e.Elevators[e.Self_id].Internal_orders[BTN_CMD][floor] = 0
-	switch button {
-	case BTN_UP:
+	
+	if e.Elevators[e.Self_id].Planned_Dir == DIR_UP {
 		e.Elevators[e.Self_id].Internal_orders[BTN_UP][floor] = 0
-	case BTN_DOWN:
+	} else if e.Elevators[e.Self_id].Planned_Dir == DIR_DOWN {
 		e.Elevators[e.Self_id].Internal_orders[BTN_DOWN][floor] = 0
-	case BTN_CMD:
-		if e.Elevators[e.Self_id].Planned_Dir == DIR_UP {
-			e.Elevators[e.Self_id].Internal_orders[BTN_UP][floor] = 0
-		} else if e.Elevators[e.Self_id].Planned_Dir == DIR_DOWN {
-			e.Elevators[e.Self_id].Internal_orders[BTN_DOWN][floor] = 0
-		}
 	}
 }
 
@@ -315,7 +311,7 @@ func calculateCost(elev Elevator, buttonType int, floor int) int {
 
 	cost := int(math.Abs(float64((10*(floor - elev.Current_Floor)))))
 	numOrders := 0
-	for x := 0; x < 4; x++{
+	for x := 0; x < N_FLOORS; x++{
 		for y := 0; y < 3; y++{
 			if elev.Internal_orders[y][x] == 1 {
 				numOrders = numOrders + 1 
@@ -345,7 +341,7 @@ func calculateCost(elev Elevator, buttonType int, floor int) int {
 }
 
 
-func (e *elev_manager) determine_target_elev(button int, floor int) int{
+func (e *elev_manager) Determine_target_elev(button int, floor int) int{
 	min := N_FLOORS
 	var cost int
 	ideal_elev := e.Self_id
@@ -372,22 +368,29 @@ func (e *elev_manager) determine_target_elev(button int, floor int) int{
 
 
 func (e *elev_manager) get_cost_for_order(key int, elev *Elevator, button int, order_floor int) int {
-	search_dir := elev.Planned_Dir
+	search_dir := 1
+	if elev.Planned_Dir != DIR_STOP {
+		search_dir = elev.Planned_Dir
+	}
+		
+
 	search_floor := elev.Current_Floor
 
 	order_floor_passed_once := false
 	cost := 0
 
 	for {
+		Println("FORFORFOR")
 		if search_floor == 0 && search_dir == DIR_DOWN || search_floor == N_FLOORS-1 && search_dir == DIR_UP {
 			search_dir = 0 - search_dir
 		} else {
 			search_floor += search_dir
 		}
-
+		
 		if search_floor == order_floor {
 			order_floor_passed_once = true
 			if button == BTN_CMD || search_dir == DIR_UP && button == BTN_UP || search_dir == DIR_DOWN && button == BTN_DOWN {
+				Println("PENISFANTORANGEN")
 				break
 			}
 		}
@@ -404,19 +407,70 @@ func (e *elev_manager) get_cost_for_order(key int, elev *Elevator, button int, o
 }
 
 func (e *elev_manager) more_orders_in_dir(id int, dir int, floor int) bool {
+
+	Println(id, dir, floor)
+
 	for i := (floor + dir); i >= 0 && i < N_FLOORS; i = i + dir {
+
+
 		if e.Elevators[id].Internal_orders[BTN_CMD][i] == 1 || e.Elevators[id].Internal_orders[BTN_UP][i] == 1 || e.Elevators[id].Internal_orders[BTN_DOWN][i] == 1 {
 			return true
+
 		}
 	}
+	Println("SVEISSAN")
+
 	return false
 }
 
 func (e *elev_manager) orders_on_floor_in_dir(id int, dir int, floor int) bool {
 	//Vår heis
-
+	Println("HEISANN")
 	if e.Elevators[id].Internal_orders[BTN_CMD][floor] == 1 || dir == DIR_UP && e.Elevators[id].Internal_orders[BTN_UP][floor] == 1 || dir == DIR_DOWN && e.Elevators[id].Internal_orders[BTN_DOWN][floor] == 1 {
 		return true
 	}
 	return false
+}
+
+
+
+func (e *elev_manager) ConnectionTimeout(id int, fromMain chan Message) {
+	Println("NOEN HAR DISKONNECKTA")
+	e.updateMaster(id)
+
+	if id != e.Self_id && e.Em_isMaster() {
+
+		for i := 0; i < N_FLOORS; i++ {
+			Print("ID: ")
+			Println(id)
+			if e.Elevators[id].External_orders[0][i] == 1 {
+				println("KOMMER IKKE SAA LANGT")
+				buttonMessage := Message{ID: BUTTON_EXTERNAL, ButtonType: BTN_UP, Floor: i}
+				fromMain <- buttonMessage
+			} else if e.Elevators[id].External_orders[1][i] == 1 {
+				buttonMessage := Message{ID: BUTTON_EXTERNAL, ButtonType: BTN_DOWN, Floor: i}
+				fromMain <- buttonMessage
+			}
+		}
+
+	}
+	Println("ER DET HER DET GÅR GALE???")
+	delete(e.Elevators, id)
+	Println("DETTE SKAL IKKE PRINTES")
+}
+
+func (e *elev_manager) updateMaster(id int) {
+
+	nyMaster := 1000
+
+	for key, _ := range e.Elevators {
+		if key != id && key < nyMaster {
+			e.master = key
+
+		}
+	}
+
+	if nyMaster == 1000 {
+		//YOU ARE ALONE HEIS, AND ALONE YOU ARE THE MASTER
+	}
 }

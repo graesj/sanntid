@@ -26,7 +26,7 @@ func main() {
 	go Manager(fromMain, toMain)
 	go CheckButtons(buttonChan)
 	
-	broadcastTicker := time.NewTicker(1*time.Second).C
+	broadcastTicker := time.NewTicker(100*time.Millisecond).C
 
 	for {
 		
@@ -36,26 +36,14 @@ func main() {
 			switch message.ID {
 
 			case REMOVE_ELEVATOR:
-				//e.RemoveElevator(message.Target)
+				e.ConnectionTimeout(message.Source, fromMain)
 
-				/*case GENERAL_UPDATE:
-				if message.Source != e.Id {
-					e.updateElevators(message)
-				}
-				*/
-				//case CALCULATE_COST:
-				//	e.calculateCostOfOrder()
-
-				//case BUTTON_EXTERNAL:
-				//	if(e.isMaster()){
-				//En funksjon som ber alle kalkulere kosten for å ta oppdraget.
-				//	}
 
 			case BUTTON_EXTERNAL:
 				ElevSetButtonLamp(message.ButtonType, message.Floor, 1)
 				if (e.Em_isMaster()){
 					Println("Mottok knapp og er master....")
-					assignID := e.Em_handleExternalOrder(message.ButtonType, message.Floor)
+					assignID := e.Determine_target_elev(message.ButtonType, message.Floor)
 					message.Source = e.Self_id
 					message.ID = ORDER_COMMAND
 					message.Target = assignID
@@ -63,6 +51,9 @@ func main() {
 					Println(message.Target)
 					fromMain <- message
 					}
+
+			case NEW_ELEVATOR:
+				e.Em_newElevator(message.Elevator)
 
 			case ELEVATOR_DATA:
 				if message.Elevator.Self_id == e.Self_id {
