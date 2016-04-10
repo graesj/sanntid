@@ -4,14 +4,16 @@ package driver
 #cgo CFLAGS: -std=c11
 #cgo LDFLAGS: -lcomedi -lm
 #include "elev.h"
+#include "io.h"
 */
 import "C"
 import (
 	. "../../.././message"
+	. "../../.././structs"
 	"fmt"
 	"time"
-	. "../../.././structs"
 )
+
 /*
 const (
 	N_FLOORS = 4

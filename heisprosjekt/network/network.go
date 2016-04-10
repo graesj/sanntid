@@ -3,10 +3,10 @@ package network
 import (
 	. "../message"
 	. "./UDP"
-	"time"
+	"fmt"
 	"net"
-	//"fmt"
-//	. ".././elev_manager"
+	"time"
+	//	. ".././elev_manager"
 	//. ".././elev_manager/fsm"
 	. "../structs"
 )
@@ -36,7 +36,7 @@ func Manager(fromMain chan Message, toMain chan Message) {
 				_, present := con_timer[message.Source]
 
 				if present { //The ip_key already has a running Timer
-					con_timer[message.Source].Reset(500*time.Millisecond)
+					con_timer[message.Source].Reset(500 * time.Millisecond)
 					toMain <- message
 				} else { //new elevator
 					con_timer[message.Source] = time.AfterFunc(500*time.Millisecond, func() { remove_elev(message.Source, toMain) })
@@ -58,6 +58,7 @@ func Manager(fromMain chan Message, toMain chan Message) {
 }
 
 func remove_elev(ip_key int, toMain chan Message) {
+	fmt.Print("FRA NETWORK FJERN HEIS")
 	m := Message{Source: ip_key, ID: REMOVE_ELEVATOR}
 	toMain <- m
 	delete(con_timer, ip_key)

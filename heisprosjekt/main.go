@@ -7,10 +7,11 @@ import (
 	. "./network"
 	. "./structs"
 	//. "./utilities"
+	//. "./elev_manager/fsm"
 	. "fmt"
 	"time"
 
-//"net"
+	//"net"
 )
 
 func main() {
@@ -29,12 +30,25 @@ func main() {
 
 	for {
 
+		if e.OperationError {
+			fromMain <- Message{ID: REMOVE_ELEVATOR, Source: e.Self_id}
+
+			if e.Elevators[e.Self_id].Current_Floor == 0 {
+
+			} else {
+
+				e.OperationError = false
+			}
+
+		}
+
 		select {
 		case message := <-toMain:
 
 			switch message.ID {
 
 			case REMOVE_ELEVATOR:
+				Print("FJERN HEIS")
 				e.ConnectionTimeout(message.Source, fromMain)
 
 			case BUTTON_EXTERNAL:
@@ -48,7 +62,7 @@ func main() {
 					Print("Beste id ble beregnet til å være: ")
 					Println(message.Target)
 					fromMain <- message
-					time.AfterFunc(300*time.Millisecond, func() { e.CheckIfOrderIsTaken(message, fromMain) })
+					time.AfterFunc(1000*time.Millisecond, func() { e.CheckIfOrderIsTaken(message, fromMain) })
 
 				}
 
@@ -69,6 +83,11 @@ func main() {
 						e.Em_newElevator(message.Elevator)
 						//Println("Det var en ny heis :D")
 					}
+				}
+			case ORDER_COMMAND:
+				if message.Target == e.Self_id {
+					Println("En ektern kommando fra master ble sent til meg :DDD")
+					e.Em_AddExternalOrders(message.Floor, message.ButtonType)
 				}
 			case LampID:
 				ElevSetButtonLamp(message.ButtonType, message.Floor, 0)
@@ -92,12 +111,8 @@ func main() {
 
 		case <-broadcastTicker:
 			BroadcastElevatorInfo(*e.Elevators[e.Self_id], fromMain)
-			//Println(e.Self_id)
-			///Println(e.Elevators[e.Self_id].Current_Dir)
-			//Println(e.Elevators[e.Self_id].Current_Floor)
-			//Println(e.Elevators[e.Self_id].State)
-			//Println(e.Elevators[e.Self_id].Planned_Dir)
-			Println(e.Elevators[e.Self_id].Internal_orders)
+
+			//Println(e.Elevators[e.Self_id].Internal_orders)
 
 		}
 	}
