@@ -33,9 +33,11 @@ func main() {
 			switch message.ID {
 
 			case REMOVE_ELEVATOR:
-				Print("FJERN HEIS")
-				e.Elevators[message.Source].Active = false
-				e.ConnectionTimeout(message.Source, fromMain)
+
+				e.Elevators[message.Source].ErrorType = message.Elevator.ErrorType
+				Print("Feil oppdaget av type: ")
+				Println(e.Elevators[message.Source].ErrorType)
+				e.ConnectionTimeout(message.Source, fromMain, message.Elevator)
 
 			case BUTTON_EXTERNAL:
 				ElevSetButtonLamp(message.ButtonType, message.Floor, 1)
@@ -53,16 +55,17 @@ func main() {
 				}
 
 			case NEW_ELEVATOR:
-
 				_, present := e.Elevators[message.Source]
 
 				if present && (e.Self_id != message.Source) {
-					//The elevator dropped for some reason. If internal orders, resend them
+
 					e.ResendInitialOrders(fromMain, message.Source)
-					e.Elevators[message.Source].Active = true
+
 				} else {
 					e.Em_newElevator(message.Elevator)
 				}
+				e.Elevators[message.Source].ErrorType = ERROR_NONE
+				e.UpdateMaster(-1)
 
 			case ELEVATOR_DATA:
 				if message.Elevator.Self_id == e.Self_id {
@@ -78,7 +81,7 @@ func main() {
 				}
 			case ORDER_COMMAND:
 				if message.Target == e.Self_id {
-					Println("En ektern kommando fra master ble sent til meg :DDD")
+					Println("En ektern kommando fra master ble sent til meg:DDD")
 					e.Em_AddExternalOrders(message.Floor, message.ButtonType)
 				}
 			case LampID:
@@ -87,8 +90,14 @@ func main() {
 			case GET_UP_TO_DATE:
 				//This happens when an elevator has been disconnected. Gets resend of own internal orders
 				if message.Target == e.Self_id {
-					e.CopyInternalOrder(message.Elevator)
+					if e.Elevators[e.Self_id].ErrorType == ERROR_NETWORK {
+
+					} else {
+						e.CopyInternalOrder(message.Elevator)
+					}
 				}
+				e.Elevators[e.Self_id].ErrorType = ERROR_NONE
+				e.UpdateMaster(-1)
 			}
 
 		case buttonMessage := <-buttonChan:
@@ -107,8 +116,9 @@ func main() {
 
 		case <-broadcastTicker:
 			BroadcastElevatorInfo(*e.Elevators[e.Self_id], fromMain)
-
-			//Println(e.Elevators[e.Self_id].Internal_orders)
+			if e.Em_isMaster() {
+				//Println("Jeg er master!!!!")
+			}
 
 		}
 	}

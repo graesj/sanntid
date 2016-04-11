@@ -39,7 +39,7 @@ func Manager(fromMain chan Message, toMain chan Message) {
 					con_timer[message.Source].Reset(500 * time.Millisecond)
 					toMain <- message
 				} else { //new elevator
-					con_timer[message.Source] = time.AfterFunc(500*time.Millisecond, func() { remove_elev(message.Source, toMain) })
+					con_timer[message.Source] = time.AfterFunc(500*time.Millisecond, func() { remove_elev(message.Source, toMain, message.Elevator) })
 					message.ID = NEW_ELEVATOR
 
 					toMain <- message
@@ -57,9 +57,10 @@ func Manager(fromMain chan Message, toMain chan Message) {
 
 }
 
-func remove_elev(ip_key int, toMain chan Message) {
+func remove_elev(ip_key int, toMain chan Message, elev Elevator) {
 	fmt.Print("FRA NETWORK FJERN HEIS")
-	m := Message{Source: ip_key, ID: REMOVE_ELEVATOR}
+	elev.ErrorType = ERROR_NETWORK
+	m := Message{Source: ip_key, ID: REMOVE_ELEVATOR, Elevator: elev}
 	toMain <- m
 	delete(con_timer, ip_key)
 }
