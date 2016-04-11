@@ -22,4 +22,7 @@ const (
 	BTN_UP   = 0
 	BTN_DOWN = 1
 	BTN_CMD  = 2
+
+	ERROR_NETWORK = 1
+	ERROR_MOTOR   = 2
 )

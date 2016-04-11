@@ -10,6 +10,7 @@ import (
 	. ".././structs"
 	. "./fsm"
 	. "./fsm/driver"
+	"os"
 )
 
 type elev_manager struct {
@@ -61,7 +62,7 @@ func (e *elev_manager) Em_elevatorUpdate(elev Elevator) {
 	e.Elevators[elev.Self_id] = &elev
 }
 
-func (e *elev_manager) Em_processElevOrders(LampChan chan Message) {
+func (e *elev_manager) Em_processElevOrders(fromMain chan Message) {
 	current_floor := -1
 	engineTrouble := false
 	lastFloor := e.Elevators[e.Self_id].Current_Floor
@@ -81,7 +82,7 @@ func (e *elev_manager) Em_processElevOrders(LampChan chan Message) {
 			for floor := 0; floor < N_FLOORS; floor++ {
 				for buttonType := 0; buttonType < 3; buttonType++ {
 					if e.Elevators[e.Self_id].Internal_orders[buttonType][floor] == 1 {
-						engineCheck.Reset(4 * time.Second)
+						engineCheck.Reset(3 * time.Second)
 						e.Elevators[e.Self_id].State = STATE_RUNNING
 					}
 				}
@@ -90,19 +91,21 @@ func (e *elev_manager) Em_processElevOrders(LampChan chan Message) {
 
 			select {
 			case <-engineCheck.C:
-
+				Print(lastFloor)
+				Print(" = ")
+				Println(e.Elevators[e.Self_id].Current_Floor)
 				if lastFloor == e.Elevators[e.Self_id].Current_Floor {
 					engineTrouble = true
 				} else {
 					lastFloor = e.Elevators[e.Self_id].Current_Floor
-					engineCheck.Reset(4 * time.Second)
+					engineCheck.Reset(3 * time.Second)
 				}
 
 			default:
 			}
 
 			if engineTrouble {
-				e.Elevators[e.Self_id].Active = false
+				e.InternalError(ERROR_MOTOR, fromMain)
 				break
 			}
 
@@ -186,28 +189,28 @@ func (e *elev_manager) Em_processElevOrders(LampChan chan Message) {
 
 				e.Elevators[e.Self_id].Furthest_Floor = -1
 				e.Elevators[e.Self_id].Planned_Dir = DIR_STOP
-				e.check4OrdersAndDirChange(LampChan)
+				e.check4OrdersAndDirChange(fromMain)
 			}
 
 		case STATE_DOOROPEN:
 			ElevSetMotorDirection(DIR_STOP)
 			ElevSetDoorOpenLamp(1)
-
+			engineCheck.Stop()
 			doorTimeout := time.NewTimer(3 * time.Second)
 			<-doorTimeout.C
 			//Kode etter
 			ElevSetDoorOpenLamp(0)
-			e.Em_RemoveOrders(current_floor, BTN_CMD, LampChan)
+			e.Em_RemoveOrders(current_floor, BTN_CMD, fromMain)
 			e.Elevators[e.Self_id].State = STATE_RUNNING
-
 			doorTimeout.Stop()
-			engineCheck.Reset(4 * time.Second)
+			lastFloor = e.Elevators[e.Self_id].Current_Floor
+			engineCheck.Reset(3 * time.Second)
 			ElevSetMotorDirection(DIR_STOP)
 		}
 	}
 }
 
-func (e *elev_manager) check4OrdersAndDirChange(LampChan chan Message) {
+func (e *elev_manager) check4OrdersAndDirChange(fromMain chan Message) {
 	foundFloor := 0
 	for floor := 0; floor < N_FLOORS; floor++ {
 		if e.Elevators[e.Self_id].Internal_orders[BTN_CMD][floor] == 1 {
@@ -224,7 +227,7 @@ func (e *elev_manager) check4OrdersAndDirChange(LampChan chan Message) {
 				foundFloor = 1
 				break
 			} else {
-				e.StopAndOpenDoor(e.Elevators[e.Self_id].Current_Floor, BTN_CMD, LampChan)
+				e.StopAndOpenDoor(e.Elevators[e.Self_id].Current_Floor, BTN_CMD, fromMain)
 				break
 			}
 		}
@@ -240,7 +243,7 @@ func (e *elev_manager) check4OrdersAndDirChange(LampChan chan Message) {
 					e.Elevators[e.Self_id].Current_Dir = DIR_DOWN
 					break
 				} else {
-					e.StopAndOpenDoor(e.Elevators[e.Self_id].Current_Floor, BTN_UP, LampChan)
+					e.StopAndOpenDoor(e.Elevators[e.Self_id].Current_Floor, BTN_UP, fromMain)
 					break
 				}
 			} else if e.Elevators[e.Self_id].Internal_orders[BTN_DOWN][floor] == 1 {
@@ -252,7 +255,7 @@ func (e *elev_manager) check4OrdersAndDirChange(LampChan chan Message) {
 					e.Elevators[e.Self_id].Current_Dir = DIR_DOWN
 					break
 				} else {
-					e.StopAndOpenDoor(e.Elevators[e.Self_id].Current_Floor, BTN_DOWN, LampChan)
+					e.StopAndOpenDoor(e.Elevators[e.Self_id].Current_Floor, BTN_DOWN, fromMain)
 					break
 				}
 			}
@@ -565,5 +568,19 @@ func (e *elev_manager) CopyInternalOrder(elev Elevator) {
 			ElevSetButtonLamp(BTN_CMD, i, 1)
 			e.Elevators[e.Self_id].Internal_orders[BTN_CMD][i] = 1
 		}
+	}
+}
+
+func (e *elev_manager) InternalError(errorType int, fromMain chan Message) {
+
+	switch errorType {
+	case ERROR_NETWORK:
+		e.Elevators[e.Self_id].Active = false
+
+	case ERROR_MOTOR:
+		fromMain <- Message{ID: REMOVE_ELEVATOR, Source: e.Self_id}
+		Print("Motortrøbbel. Ring Roger.")
+		os.Exit(1)
+
 	}
 }

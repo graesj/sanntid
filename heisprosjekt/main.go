@@ -7,7 +7,7 @@ import (
 	. "./network"
 	. "./structs"
 	//. "./utilities"
-	. "./elev_manager/fsm"
+	//. "./elev_manager/fsm"
 	. "fmt"
 	"time"
 )
@@ -16,29 +16,16 @@ func main() {
 
 	e := Em_makeElevManager()
 	buttonChan := make(chan Message, 100)
-	LampChan := make(chan Message, 100)
 	fromMain := make(chan Message, 100)
 	toMain := make(chan Message, 100)
-	errorSent := false
 
-	go e.Em_processElevOrders(LampChan)
+	go e.Em_processElevOrders(fromMain)
 	go Manager(fromMain, toMain)
 	go CheckButtons(buttonChan)
 
 	broadcastTicker := time.NewTicker(100 * time.Millisecond).C
 
 	for {
-
-		if e.Elevators[e.Self_id].Active == false && errorSent == false {
-
-			fromMain <- Message{ID: REMOVE_ELEVATOR, Source: e.Self_id}
-			errorSent = true
-			if Fsm_initiateElev() == 1 {
-				e.Elevators[e.Self_id].Active = true
-				errorSent = false
-			}
-
-		}
 
 		select {
 		case message := <-toMain:
@@ -117,8 +104,6 @@ func main() {
 				e.Em_AddInternalOrders(buttonMessage.Floor, BTN_CMD)
 				Println("bais")
 			}
-		case LampMessage := <-LampChan:
-			fromMain <- LampMessage
 
 		case <-broadcastTicker:
 			BroadcastElevatorInfo(*e.Elevators[e.Self_id], fromMain)
