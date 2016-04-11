@@ -7,11 +7,9 @@ import (
 	. "./network"
 	. "./structs"
 	//. "./utilities"
-	//. "./elev_manager/fsm"
+	. "./elev_manager/fsm"
 	. "fmt"
 	"time"
-
-	//"net"
 )
 
 func main() {
@@ -21,6 +19,7 @@ func main() {
 	LampChan := make(chan Message, 100)
 	fromMain := make(chan Message, 100)
 	toMain := make(chan Message, 100)
+	errorSent := false
 
 	go e.Em_processElevOrders(LampChan)
 	go Manager(fromMain, toMain)
@@ -30,10 +29,14 @@ func main() {
 
 	for {
 
-		if e.OperationError {
+		if e.Elevators[e.Self_id].Active == false && errorSent == false {
 
 			fromMain <- Message{ID: REMOVE_ELEVATOR, Source: e.Self_id}
-			exit(1)
+			errorSent = true
+			if Fsm_initiateElev() == 1 {
+				e.Elevators[e.Self_id].Active = true
+				errorSent = false
+			}
 
 		}
 
@@ -63,9 +66,12 @@ func main() {
 				}
 
 			case NEW_ELEVATOR:
-				if _, present := e.Elevators[message.Elevator.Self_id] {
+
+				_, present := e.Elevators[message.Source]
+
+				if present && (e.Self_id != message.Source) {
 					//The elevator dropped for some reason. If internal orders, resend them
-					e.ResendInitialOrders(fromMain)
+					e.ResendInitialOrders(fromMain, message.Source)
 					e.Elevators[message.Source].Active = true
 				} else {
 					e.Em_newElevator(message.Elevator)
@@ -90,14 +96,13 @@ func main() {
 				}
 			case LampID:
 				ElevSetButtonLamp(message.ButtonType, message.Floor, 0)
-			
+
 			case GET_UP_TO_DATE:
 				//This happens when an elevator has been disconnected. Gets resend of own internal orders
-				if message.Taget == e.Self_id {
-					e.CopyInternalOrders(message.Elevator)
+				if message.Target == e.Self_id {
+					e.CopyInternalOrder(message.Elevator)
 				}
 			}
-
 
 		case buttonMessage := <-buttonChan:
 

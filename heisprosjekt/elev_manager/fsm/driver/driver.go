@@ -78,7 +78,6 @@ func CheckButtons(buttonChan chan Message) {
 					if ElevGetButtonSignal(buttonType, floor) == 1 {
 						fmt.Println("trykker")
 						if buttonType == BTN_CMD {
-							ElevSetButtonLamp(buttonType, floor, 1)
 							buttonMessage := Message{ID: BUTTON_INTERNAL, Floor: floor}
 							buttonChan <- buttonMessage
 							time.Sleep(250 * time.Millisecond)

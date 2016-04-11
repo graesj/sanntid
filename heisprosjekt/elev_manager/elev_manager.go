@@ -13,11 +13,9 @@ import (
 )
 
 type elev_manager struct {
-	master          int
-	OperationError  bool
-	Self_id         int
-	external_orders [2][N_FLOORS]int  //This is where the orders from the floor panels are put. These orders are broadcasted to all Elevators,
-	Elevators       map[int]*Elevator //creates a hash table with 'int' as a keyType, and '*Elevator' as a valueType
+	master    int
+	Self_id   int
+	Elevators map[int]*Elevator //creates a hash table with 'int' as a keyType, and '*Elevator' as a valueType
 }
 
 func Em_makeElevManager() elev_manager {
@@ -27,7 +25,6 @@ func Em_makeElevManager() elev_manager {
 	e.Elevators[e.Self_id] = new(Elevator)
 
 	Fsm_initiateElev()
-	e.OperationError = false
 	e.Elevators[e.Self_id].Current_Dir = DIR_STOP
 	e.Elevators[e.Self_id].Planned_Dir = DIR_STOP
 	e.Elevators[e.Self_id].Active = true
@@ -84,7 +81,7 @@ func (e *elev_manager) Em_processElevOrders(LampChan chan Message) {
 			for floor := 0; floor < N_FLOORS; floor++ {
 				for buttonType := 0; buttonType < 3; buttonType++ {
 					if e.Elevators[e.Self_id].Internal_orders[buttonType][floor] == 1 {
-						engineCheck.Reset(3 * time.Second)
+						engineCheck.Reset(4 * time.Second)
 						e.Elevators[e.Self_id].State = STATE_RUNNING
 					}
 				}
@@ -96,20 +93,16 @@ func (e *elev_manager) Em_processElevOrders(LampChan chan Message) {
 
 				if lastFloor == e.Elevators[e.Self_id].Current_Floor {
 					engineTrouble = true
-					Println("hbu")
 				} else {
 					lastFloor = e.Elevators[e.Self_id].Current_Floor
-					Println("WJA")
-					engineCheck.Reset(2 * time.Second)
+					engineCheck.Reset(4 * time.Second)
 				}
 
 			default:
-				//asdfsd
 			}
 
 			if engineTrouble {
-				e.OperationError = true
-				engineTrouble = false
+				e.Elevators[e.Self_id].Active = false
 				break
 			}
 
@@ -208,7 +201,7 @@ func (e *elev_manager) Em_processElevOrders(LampChan chan Message) {
 			e.Elevators[e.Self_id].State = STATE_RUNNING
 
 			doorTimeout.Stop()
-			engineCheck.Reset(3 * time.Second)
+			engineCheck.Reset(4 * time.Second)
 			ElevSetMotorDirection(DIR_STOP)
 		}
 	}
@@ -352,6 +345,7 @@ func (e *elev_manager) Em_AddInternalOrders(floor int, button int) {
 	case BTN_DOWN:
 		e.Elevators[e.Self_id].Internal_orders[BTN_DOWN][floor] = 1
 	case BTN_CMD:
+		ElevSetButtonLamp(BTN_CMD, floor, 1)
 		e.Elevators[e.Self_id].Internal_orders[BTN_CMD][floor] = 1
 	}
 }
@@ -565,8 +559,10 @@ func (e *elev_manager) ResendInitialOrders(fromMain chan Message, id int) {
 }
 
 func (e *elev_manager) CopyInternalOrder(elev Elevator) {
+	Println("Henter tilbake køen min")
 	for i := 0; i < N_FLOORS; i++ {
 		if elev.Internal_orders[BTN_CMD][i] == 1 {
+			ElevSetButtonLamp(BTN_CMD, i, 1)
 			e.Elevators[e.Self_id].Internal_orders[BTN_CMD][i] = 1
 		}
 	}
