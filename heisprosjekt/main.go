@@ -31,14 +31,9 @@ func main() {
 	for {
 
 		if e.OperationError {
+
 			fromMain <- Message{ID: REMOVE_ELEVATOR, Source: e.Self_id}
-
-			if e.Elevators[e.Self_id].Current_Floor == 0 {
-
-			} else {
-
-				e.OperationError = false
-			}
+			exit(1)
 
 		}
 
@@ -49,6 +44,7 @@ func main() {
 
 			case REMOVE_ELEVATOR:
 				Print("FJERN HEIS")
+				e.Elevators[message.Source].Active = false
 				e.ConnectionTimeout(message.Source, fromMain)
 
 			case BUTTON_EXTERNAL:
@@ -67,7 +63,13 @@ func main() {
 				}
 
 			case NEW_ELEVATOR:
-				e.Em_newElevator(message.Elevator)
+				if _, present := e.Elevators[message.Elevator.Self_id] {
+					//The elevator dropped for some reason. If internal orders, resend them
+					e.ResendInitialOrders(fromMain)
+					e.Elevators[message.Source].Active = true
+				} else {
+					e.Em_newElevator(message.Elevator)
+				}
 
 			case ELEVATOR_DATA:
 				if message.Elevator.Self_id == e.Self_id {
@@ -79,9 +81,6 @@ func main() {
 					if present { //Update the elevatordata
 						e.Em_elevatorUpdate(message.Elevator)
 						//	Println("Det var en oppdatering")
-					} else {
-						e.Em_newElevator(message.Elevator)
-						//Println("Det var en ny heis :D")
 					}
 				}
 			case ORDER_COMMAND:
@@ -91,7 +90,14 @@ func main() {
 				}
 			case LampID:
 				ElevSetButtonLamp(message.ButtonType, message.Floor, 0)
+			
+			case GET_UP_TO_DATE:
+				//This happens when an elevator has been disconnected. Gets resend of own internal orders
+				if message.Taget == e.Self_id {
+					e.CopyInternalOrders(message.Elevator)
+				}
 			}
+
 
 		case buttonMessage := <-buttonChan:
 

@@ -1,14 +1,15 @@
 package elev_manager
 
 import (
+	. "fmt"
+	"math"
+	"time"
+
 	. ".././message"
 	. ".././network"
 	. ".././structs"
 	. "./fsm"
 	. "./fsm/driver"
-	. "fmt"
-	"math"
-	"time"
 )
 
 type elev_manager struct {
@@ -29,6 +30,7 @@ func Em_makeElevManager() elev_manager {
 	e.OperationError = false
 	e.Elevators[e.Self_id].Current_Dir = DIR_STOP
 	e.Elevators[e.Self_id].Planned_Dir = DIR_STOP
+	e.Elevators[e.Self_id].Active = true
 	e.Elevators[e.Self_id].Current_Floor = 0
 	e.Elevators[e.Self_id].State = STATE_IDLE
 	e.Elevators[e.Self_id].Self_id = e.Self_id
@@ -409,24 +411,29 @@ func (e *elev_manager) Determine_target_elev(button int, floor int) int {
 	var cost int
 	ideal_elev := e.Self_id
 	for key, elev := range e.Elevators {
-		cost = 0
 
-		if elev.Current_Floor == floor && (elev.State == STATE_IDLE || elev.State == STATE_DOOROPEN) {
-			return key
-		}
+		if elev.Active {
 
-		if elev.Internal_orders[button][floor] == 1 {
-			return key
-		}
+			cost = 0
 
-		cost = e.get_cost_for_order(key, elev, button, floor)
+			if elev.Current_Floor == floor && (elev.State == STATE_IDLE || elev.State == STATE_DOOROPEN) {
+				return key
+			}
 
-		if cost < min {
-			ideal_elev = key
-			min = cost
+			if elev.Internal_orders[button][floor] == 1 {
+				return key
+			}
+
+			cost = e.get_cost_for_order(key, elev, button, floor)
+
+			if cost < min {
+				ideal_elev = key
+				min = cost
+			}
 		}
 	}
 	return ideal_elev
+
 }
 
 func (e *elev_manager) get_cost_for_order(key int, elev *Elevator, button int, order_floor int) int {
@@ -510,7 +517,7 @@ func (e *elev_manager) ConnectionTimeout(id int, fromMain chan Message) {
 	}
 	Print("HER GÅR DET IKKE GALT JINX")
 	if id != e.Self_id {
-		delete(e.Elevators, id)
+		e.Elevators[id].Active = false
 	}
 
 }
@@ -548,5 +555,19 @@ func (e *elev_manager) CheckIfOrderIsTaken(message Message, fromMain chan Messag
 			Println("Resending message")
 		}
 
+	}
+}
+
+func (e *elev_manager) ResendInitialOrders(fromMain chan Message, id int) {
+	m := Message{ID: GET_UP_TO_DATE, Target: id, Elevator: *e.Elevators[id]}
+	fromMain <- m
+
+}
+
+func (e *elev_manager) CopyInternalOrder(elev Elevator) {
+	for i := 0; i < N_FLOORS; i++ {
+		if elev.Internal_orders[BTN_CMD][i] == 1 {
+			e.Elevators[e.Self_id].Internal_orders[BTN_CMD][i] = 1
+		}
 	}
 }
