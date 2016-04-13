@@ -82,159 +82,6 @@ func (e *elev_manager) OnConnectionTimeout(id int, fromMain chan Message, elev E
 
 }
 
-func (e *elev_manager) ProcessElevOrders(fromMain chan Message) {
-	current_floor := -1
-	engineTrouble := false
-	lastFloor := e.Elevators[e.Self_id].Current_Floor
-	engineCheck := time.NewTimer(3 * time.Second)
-
-	for {
-
-		switch e.Elevators[e.Self_id].State {
-		case STATE_IDLE:
-			select {
-			case <-engineCheck.C:
-			default:
-			}
-
-			e.Elevators[e.Self_id].Current_Dir = DIR_STOP
-			e.Elevators[e.Self_id].Planned_Dir = DIR_STOP
-
-			for floor := 0; floor < N_FLOORS; floor++ {
-				for buttonType := 0; buttonType < 3; buttonType++ {
-					if e.Elevators[e.Self_id].Internal_orders[buttonType][floor] == 1 {
-						engineCheck.Reset(3 * time.Second)
-						e.Elevators[e.Self_id].State = STATE_RUNNING
-					}
-				}
-			}
-		case STATE_RUNNING:
-
-			select {
-			case <-engineCheck.C:
-				Print(lastFloor)
-				Print(" = ")
-				Println(e.Elevators[e.Self_id].Current_Floor)
-				if lastFloor == e.Elevators[e.Self_id].Current_Floor {
-					engineTrouble = true
-				} else {
-					lastFloor = e.Elevators[e.Self_id].Current_Floor
-					engineCheck.Reset(3 * time.Second)
-				}
-
-			default:
-			}
-
-			if engineTrouble {
-				ElevSetMotorDirection(DIR_STOP)
-				e.Elevators[e.Self_id].ErrorType = ERROR_MOTOR
-				e.OnMotorError(fromMain)
-				break
-			}
-
-			switch e.Elevators[e.Self_id].Current_Dir {
-			case DIR_UP:
-
-				ElevSetMotorDirection(DIR_UP)
-				current_floor = ElevGetFloorSensorSignal()
-				if current_floor != -1 {
-					UpdateFloorLight(current_floor)
-
-					e.Elevators[e.Self_id].Current_Floor = current_floor
-					if e.Elevators[e.Self_id].Internal_orders[BTN_CMD][current_floor] == 1 {
-						e.Elevators[e.Self_id].Current_Dir = DIR_STOP
-
-						e.Elevators[e.Self_id].State = STATE_DOOROPEN
-						break
-					}
-					if e.Elevators[e.Self_id].Planned_Dir == DIR_DOWN {
-						e.Elevators[e.Self_id].Furthest_Floor = e.calcFurthestFloor(e.Elevators[e.Self_id].Planned_Dir)
-
-						if e.Elevators[e.Self_id].Internal_orders[BTN_DOWN][current_floor] == 1 {
-							if e.Elevators[e.Self_id].Furthest_Floor == current_floor {
-								e.Elevators[e.Self_id].Current_Dir = DIR_STOP
-								e.Elevators[e.Self_id].State = STATE_DOOROPEN
-								break
-							}
-						}
-					} else if e.Elevators[e.Self_id].Planned_Dir == DIR_UP {
-						if e.Elevators[e.Self_id].Internal_orders[BTN_UP][current_floor] == 1 {
-							e.Elevators[e.Self_id].Current_Dir = DIR_STOP
-							e.Elevators[e.Self_id].State = STATE_DOOROPEN
-							break
-						}
-					}
-				}
-			case DIR_DOWN:
-				ElevSetMotorDirection(DIR_DOWN)
-
-				current_floor = ElevGetFloorSensorSignal()
-				if current_floor != -1 {
-					UpdateFloorLight(current_floor)
-					e.Elevators[e.Self_id].Current_Floor = current_floor
-					if e.Elevators[e.Self_id].Internal_orders[BTN_CMD][current_floor] == 1 {
-						e.Elevators[e.Self_id].Current_Dir = DIR_STOP
-						e.Elevators[e.Self_id].State = STATE_DOOROPEN
-						break
-					}
-					if e.Elevators[e.Self_id].Planned_Dir == DIR_UP {
-						e.Elevators[e.Self_id].Furthest_Floor = e.calcFurthestFloor(e.Elevators[e.Self_id].Planned_Dir)
-
-						if e.Elevators[e.Self_id].Internal_orders[BTN_UP][current_floor] == 1 {
-							if e.Elevators[e.Self_id].Furthest_Floor == current_floor {
-								e.Elevators[e.Self_id].Current_Dir = DIR_STOP
-								e.Elevators[e.Self_id].State = STATE_DOOROPEN
-								break
-							}
-						}
-					} else if e.Elevators[e.Self_id].Planned_Dir == DIR_DOWN {
-						if e.Elevators[e.Self_id].Internal_orders[BTN_DOWN][current_floor] == 1 {
-							e.Elevators[e.Self_id].Current_Dir = DIR_STOP
-							e.Elevators[e.Self_id].State = STATE_DOOROPEN
-							break
-						}
-					}
-				}
-			case DIR_STOP:
-				ElevSetMotorDirection(DIR_STOP)
-				boll := true
-				for floor := 0; floor < N_FLOORS; floor++ {
-					for buttonType := 0; buttonType < 3; buttonType++ {
-						if e.Elevators[e.Self_id].Internal_orders[buttonType][floor] == 1 {
-							boll = false
-						}
-					}
-				}
-				if boll {
-					lastFloor = e.Elevators[e.Self_id].Current_Floor
-					engineCheck.Stop()
-					e.Elevators[e.Self_id].State = STATE_IDLE
-					break
-				}
-
-				e.Elevators[e.Self_id].Furthest_Floor = -1
-				//e.Elevators[e.Self_id].Planned_Dir = DIR_STOP
-				e.checkForOrdersAndDirChange(fromMain)
-			}
-
-		case STATE_DOOROPEN:
-			ElevSetMotorDirection(DIR_STOP)
-			ElevSetDoorOpenLamp(1)
-			engineCheck.Stop()
-			doorTimeout := time.NewTimer(3 * time.Second)
-			<-doorTimeout.C
-			//Kode etter
-			ElevSetDoorOpenLamp(0)
-			e.RemoveOrders(current_floor, BTN_CMD, fromMain)
-			doorTimeout.Stop()
-			e.Elevators[e.Self_id].State = STATE_RUNNING
-			lastFloor = e.Elevators[e.Self_id].Current_Floor
-			engineCheck.Reset(3 * time.Second)
-			ElevSetMotorDirection(DIR_STOP)
-		}
-	}
-}
-
 /*
 func (e *elev_manager) TEMPLATE_FUNCTION(fromMain chan Message) {
 	isEmpty := false
@@ -374,7 +221,9 @@ func (e *elev_manager) RemoveOrders(floor int, button int, lampChan chan Message
 		if isEmpty {
 			e.Elevators[e.Self_id].Internal_orders[BTN_DOWN][floor] = 0
 			e.Elevators[e.Self_id].External_orders[BTN_DOWN][floor] = 0
-			UpdateButtonLamp(BTN_DOWN, floor, lampChan)
+			Updat
+
+			eButtonLamp(BTN_DOWN, floor, lampChan)
 		}
 		e.Elevators[e.Self_id].Internal_orders[BTN_UP][floor] = 0
 		e.Elevators[e.Self_id].External_orders[BTN_UP][floor] = 0
@@ -581,10 +430,10 @@ func (e *elev_manager) CopyInternalOrder(elev Elevator) {
 
 func (e *elev_manager) OnMotorError(fromMain chan Message) {
 
-		fromMain <- Message{ID: REMOVE_ELEVATOR, Source: e.Self_id, Elevator: *e.Elevators[e.Self_id]}
-		Println("Motortrøbbel. Ring Roger.")
-		Print("Feil av type: ")
-		Println(e.Elevators[e.Self_id].ErrorType)
-		os.Exit(1)
+	fromMain <- Message{ID: REMOVE_ELEVATOR, Source: e.Self_id, Elevator: *e.Elevators[e.Self_id]}
+	Println("Motortrøbbel. Ring Roger.")
+	Print("Feil av type: ")
+	Println(e.Elevators[e.Self_id].ErrorType)
+	os.Exit(1)
 
 }
