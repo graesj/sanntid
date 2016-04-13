@@ -7,7 +7,7 @@ import (
 	. "./network"
 	. "./structs"
 	//. "./utilities"
-	//. "./elev_manager/fsm"
+	. "./elev_manager/fsm"
 	. "fmt"
 	"time"
 )
@@ -18,10 +18,13 @@ func main() {
 	buttonChan := make(chan Message, 100)
 	fromMain := make(chan Message, 100)
 	toMain := make(chan Message, 100)
+	//Self_id := e.Self_id
 
-	go e.ProcessElevOrders(fromMain)
+
 	go Manager(fromMain, toMain)
 	go CheckButtons(buttonChan)
+	time.AfterFunc(200*time.Millisecond, func() {go ProcessElevOrders(e.Elevators[e.Self_id], fromMain)})
+	//go ProcessElevOrders(e.Elevators[e.Self_id], fromMain)
 
 	broadcastTicker := time.NewTicker(100 * time.Millisecond).C
 
@@ -57,11 +60,12 @@ func main() {
 			case NEW_ELEVATOR:
 				_, present := e.Elevators[message.Source]
 
+
 				if present && (e.Self_id != message.Source) {
 
 					e.ResendInitialOrders(fromMain, message.Source)
 
-				} else {
+				} else if !present {
 					e.NewElevator(message.Elevator)
 				}
 				e.Elevators[message.Source].ErrorType = ERROR_NONE
@@ -82,7 +86,8 @@ func main() {
 			case ORDER_COMMAND:
 				if message.Target == e.Self_id {
 					Println("En ektern kommando fra master ble sent til meg:DDD")
-					e.AddExternalOrders(message.Floor, message.ButtonType)
+					//e.AddExternalOrders(message.Floor, message.ButtonType)
+					AddExternalOrders(e.Elevators[e.Self_id], message.Floor, message.ButtonType)
 				}
 			case LAMP_MESSAGE:
 				ElevSetButtonLamp(message.ButtonType, message.Floor, 0)
@@ -110,16 +115,14 @@ func main() {
 				Println("Sender eksterntknappetrykk ut")
 
 			} else if buttonMessage.ID == BUTTON_INTERNAL {
-				e.AddInternalOrders(buttonMessage.Floor, BTN_CMD)
+				AddInternalOrders(e.Elevators[e.Self_id],buttonMessage.Floor, BTN_CMD)
 				Println("bais")
 			}
 
 		case <-broadcastTicker:
 			BroadcastElevatorInfo(*e.Elevators[e.Self_id], fromMain)
-			if e.IsMaster() {
-				//Println("Jeg er master!!!!")
+			//Println(e.Elevators[Self_id].Internal_orders)
 			}
 
-		}
 	}
 }

@@ -31,3 +31,4 @@ const (
 	STATE_RUNNING  = 1
 	STATE_DOOROPEN = 2
 )
+
