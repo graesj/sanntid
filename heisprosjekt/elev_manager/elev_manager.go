@@ -99,7 +99,7 @@ func (e *elev_manager) ProcessElevOrders(fromMain chan Message) {
 
 			e.Elevators[e.Self_id].Current_Dir = DIR_STOP
 			e.Elevators[e.Self_id].Planned_Dir = DIR_STOP
-
+			Println("STATE_IDLE")
 			for floor := 0; floor < N_FLOORS; floor++ {
 				for buttonType := 0; buttonType < 3; buttonType++ {
 					if e.Elevators[e.Self_id].Internal_orders[buttonType][floor] == 1 {
@@ -208,13 +208,14 @@ func (e *elev_manager) ProcessElevOrders(fromMain chan Message) {
 				if boll {
 					lastFloor = e.Elevators[e.Self_id].Current_Floor
 					engineCheck.Stop()
+					Println("boll did wrong")
 					e.Elevators[e.Self_id].State = STATE_IDLE
 					break
 				}
 
 				e.Elevators[e.Self_id].Furthest_Floor = -1
 				//e.Elevators[e.Self_id].Planned_Dir = DIR_STOP
-				e.checkForOrdersAndDirChange(fromMain)
+				e.TEMPLATE_FUNCTION()
 			}
 
 		case STATE_DOOROPEN:
@@ -235,19 +236,69 @@ func (e *elev_manager) ProcessElevOrders(fromMain chan Message) {
 	}
 }
 
-/*
-func (e *elev_manager) TEMPLATE_FUNCTION(fromMain chan Message) {
-	isEmpty := false
+
+func (e *elev_manager) TEMPLATE_FUNCTION() {
 	foundFloor := 0
 
 	switch e.Elevators[e.Self_id].Planned_Dir {
 	case DIR_UP:
-
+		for floor:= 0; floor < N_FLOORS; floor++ {
+			if e.Elevators[e.Self_id].Internal_orders[BTN_UP][floor] == 1 {
+				foundFloor = 1
+				if e.Elevators[e.Self_id].Current_Floor > floor {
+					e.Elevators[e.Self_id].Current_Dir = DIR_DOWN
+					break
+				} else {
+					e.Elevators[e.Self_id].Current_Dir = DIR_UP
+					break
+				}
+			}
+		}
+		if foundFloor == 0 {
+			e.Elevators[e.Self_id].Planned_Dir = DIR_STOP
+		}
+	case DIR_DOWN:
+		for floor:= N_FLOORS-1; floor >= 0; floor-- {
+			if e.Elevators[e.Self_id].Internal_orders[BTN_DOWN][floor] == 1 {
+				foundFloor = 1
+				if e.Elevators[e.Self_id].Current_Floor > floor {
+					e.Elevators[e.Self_id].Current_Dir = DIR_DOWN
+					break
+				} else {
+					e.Elevators[e.Self_id].Current_Dir = DIR_UP
+					break
+				}
+			}
+		}
+		if foundFloor == 0 {
+			e.Elevators[e.Self_id].Planned_Dir = DIR_STOP
+		}
+	case DIR_STOP:
+		for floor := 0; floor < N_FLOORS; floor++ {
+			for buttonType := BTN_CMD; buttonType >= 0; buttonType-- {
+				if e.Elevators[e.Self_id].Internal_orders[buttonType][floor] == 1 {
+					foundFloor = 1
+					if buttonType == BTN_UP {
+						Println("Setting Planned_Dir = DIR_UP")
+						e.Elevators[e.Self_id].Planned_Dir = DIR_UP
+					} else if buttonType == BTN_DOWN {
+						Println("Setting Planned_Dir = DIR_DOWN")
+						e.Elevators[e.Self_id].Planned_Dir = DIR_DOWN						
+					}
+					if e.Elevators[e.Self_id].Current_Floor > floor {
+						e.Elevators[e.Self_id].Current_Dir = DIR_DOWN
+					} else {
+						e.Elevators[e.Self_id].Current_Dir = DIR_UP
+					}
+					floor = N_FLOORS-1 //Asserting break out of nested loop
+					break
+				}
+			}
+		}
 	}
+}
 
-}*/
-
-func (e *elev_manager) checkForOrdersAndDirChange(fromMain chan Message) {
+func (e *elev_manager) checkForOrdersAndDirChange() {
 	isEmpty := false
 	foundFloor := 0
 	for floor := 0; floor < N_FLOORS; floor++ {

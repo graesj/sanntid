@@ -116,9 +116,7 @@ func main() {
 
 		case <-broadcastTicker:
 			BroadcastElevatorInfo(*e.Elevators[e.Self_id], fromMain)
-			if e.IsMaster() {
-				//Println("Jeg er master!!!!")
-			}
+			Println(e.Elevators[e.Self_id].Planned_Dir)
 
 		}
 	}
