@@ -4,14 +4,12 @@ import (
 	. "fmt"
 	"math"
 
-
 	. ".././message"
 	. ".././network"
 	. ".././structs"
 	. "./fsm"
 	. "./fsm/driver"
 )
-
 
 type elev_manager struct {
 	master    int
@@ -65,10 +63,10 @@ func (e *elev_manager) OnConnectionTimeout(id int, fromMain chan Message, elev E
 	if id != e.Self_id && e.IsMaster() {
 		Println("Dette skal bare skje med master")
 		for i := 0; i < N_FLOORS; i++ {
-			if e.Elevators[id].External_orders[0][i] == 1 {
+			if e.Elevators[id].Internal_orders[BTN_UP][i] == 1 {
 				buttonMessage := Message{ID: BUTTON_EXTERNAL, ButtonType: BTN_UP, Floor: i}
 				fromMain <- buttonMessage
-			} else if e.Elevators[id].External_orders[1][i] == 1 {
+			} else if e.Elevators[id].Internal_orders[BTN_DOWN][i] == 1 {
 				buttonMessage := Message{ID: BUTTON_EXTERNAL, ButtonType: BTN_DOWN, Floor: i}
 				fromMain <- buttonMessage
 			}
@@ -98,32 +96,6 @@ func (e *elev_manager) shouldIChangeDir(planned_dir int) bool {
 	}
 	return true
 }
-
-/*
-func (e *elev_manager) AddInternalOrders(floor int, button int) {
-	switch button {
-	case BTN_UP:
-		e.Elevators[e.Self_id].Internal_orders[BTN_UP][floor] = 1
-	case BTN_DOWN:
-		e.Elevators[e.Self_id].Internal_orders[BTN_DOWN][floor] = 1
-	case BTN_CMD:
-		ElevSetButtonLamp(BTN_CMD, floor, 1)
-		e.Elevators[e.Self_id].Internal_orders[BTN_CMD][floor] = 1
-	}
-}*/
-
-/*
-func (e *elev_manager) AddExternalOrders(floor int, buttonType int) {
-	if buttonType == BTN_UP {
-		e.Elevators[e.Self_id].Internal_orders[BTN_UP][floor] = 1
-		e.Elevators[e.Self_id].External_orders[BTN_UP][floor] = 1
-
-	} else if buttonType == BTN_DOWN {
-		e.Elevators[e.Self_id].Internal_orders[BTN_DOWN][floor] = 1
-		e.Elevators[e.Self_id].External_orders[BTN_DOWN][floor] = 1
-
-	}
-}*/
 
 func (e *elev_manager) ElevatorUpdate(elev Elevator) {
 	e.Elevators[elev.Self_id] = &elev
@@ -217,7 +189,7 @@ func (e *elev_manager) OrdersOnFloorInDir(id int, dir int, floor int) bool {
 }
 
 func (e *elev_manager) UpdateMaster(id int) {
-
+	//Set id = -1 if and ID is not to be exluded
 	nyMaster := 1000
 
 	for key, _ := range e.Elevators {
@@ -228,7 +200,7 @@ func (e *elev_manager) UpdateMaster(id int) {
 		}
 	}
 	if nyMaster == 1000 {
-		Println("Klare ikke finne ny master")
+		//New master could not be determined. This error
 	} else {
 		e.master = nyMaster
 
@@ -236,12 +208,12 @@ func (e *elev_manager) UpdateMaster(id int) {
 }
 
 func (e *elev_manager) CheckIfOrderIsReceived(message Message, fromMain chan Message) {
-
+	//Called by master 1s after a command has been sent out.
 	_, present := e.Elevators[message.Target]
 
 	if present {
 
-		if e.Elevators[message.Target].External_orders[message.ButtonType][message.Floor] != 1 {
+		if e.Elevators[message.Target].Internal_orders[message.ButtonType][message.Floor] != 1 {
 			fromMain <- message
 			Println("Resending message")
 		}
@@ -249,7 +221,7 @@ func (e *elev_manager) CheckIfOrderIsReceived(message Message, fromMain chan Mes
 	}
 }
 
-func (e *elev_manager) ResendInitialOrders(fromMain chan Message, id int) {
+func (e *elev_manager) ResendInternalOrders(fromMain chan Message, id int) {
 	m := Message{ID: GET_UP_TO_DATE, Target: id, Elevator: *e.Elevators[id]}
 	fromMain <- m
 }
@@ -259,10 +231,8 @@ func (e *elev_manager) CopyInternalOrder(elev Elevator) {
 	Println(elev.Internal_orders)
 	for i := 0; i < N_FLOORS; i++ {
 		if elev.Internal_orders[BTN_CMD][i] == 1 {
-			Println(i)
 			ElevSetButtonLamp(BTN_CMD, i, 1)
-			AddInternalOrders(e.Elevators[e.Self_id],i, BTN_CMD)
+			AddInternalOrders(e.Elevators[e.Self_id], i, BTN_CMD)
 		}
 	}
 }
-

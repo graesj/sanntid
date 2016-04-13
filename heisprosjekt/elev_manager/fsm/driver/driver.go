@@ -108,3 +108,13 @@ func UpdateButtonLamp(button int, floor int, lampChan chan Message) {
 func UpdateFloorLight(floor int) {
 	ElevSetFloorLamp(floor)
 }
+
+func TurnOffAllExternalLights() {
+	for button := 0; button < 3; button++ {
+		for floor := 0; floor < N_FLOORS; floor++ {
+			if !(button == 0 && floor == N_FLOORS-1) && !(button == 1 && floor == 0) {
+				ElevSetButtonLamp(button, floor, 0)
+			}
+		}
+	}
+}

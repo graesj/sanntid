@@ -9,12 +9,11 @@ type Elevator struct {
 	Self_id         int
 	ErrorType       int
 	Internal_orders [3][N_FLOORS]byte //both external and internal orders
-	External_orders [2][N_FLOORS]byte //orders from the external panel
-	//Just for backup
 }
 
 const (
 	N_FLOORS = 4
+
 	DIR_UP   = 1
 	DIR_DOWN = -1
 	DIR_STOP = 0
@@ -31,4 +30,3 @@ const (
 	STATE_RUNNING  = 1
 	STATE_DOOROPEN = 2
 )
-

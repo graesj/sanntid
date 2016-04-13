@@ -18,13 +18,10 @@ func main() {
 	buttonChan := make(chan Message, 100)
 	fromMain := make(chan Message, 100)
 	toMain := make(chan Message, 100)
-	//Self_id := e.Self_id
-
 
 	go Manager(fromMain, toMain)
 	go CheckButtons(buttonChan)
-	time.AfterFunc(200*time.Millisecond, func() {go ProcessElevOrders(e.Elevators[e.Self_id], fromMain)})
-	//go ProcessElevOrders(e.Elevators[e.Self_id], fromMain)
+	time.AfterFunc(200*time.Millisecond, func() { go ProcessElevOrders(e.Elevators[e.Self_id], fromMain) })
 
 	broadcastTicker := time.NewTicker(100 * time.Millisecond).C
 
@@ -37,15 +34,21 @@ func main() {
 
 			case REMOVE_ELEVATOR:
 
+				if message.Source == e.Self_id {
+					//Turn of external lamps.
+
+				}
+
 				e.Elevators[message.Source].ErrorType = message.Elevator.ErrorType
-				Print("Feil oppdaget av type: ")
-				Println(e.Elevators[message.Source].ErrorType)
+				Print("Elevator has dropped out. ID: ")
+				Println(message.Source)
 				e.OnConnectionTimeout(message.Source, fromMain, message.Elevator)
 
 			case BUTTON_EXTERNAL:
+
 				ElevSetButtonLamp(message.ButtonType, message.Floor, 1)
 				if e.IsMaster() {
-					Println("Mottok knapp og er master....")
+					Println("Mottok knapp og er master. Beregner beste ID for oppdraget..")
 					assignID := e.DetermineTargetElev(message.ButtonType, message.Floor)
 					message.Source = e.Self_id
 					message.ID = ORDER_COMMAND
@@ -60,10 +63,9 @@ func main() {
 			case NEW_ELEVATOR:
 				_, present := e.Elevators[message.Source]
 
-
 				if present && (e.Self_id != message.Source) {
 
-					e.ResendInitialOrders(fromMain, message.Source)
+					e.ResendInternalOrders(fromMain, message.Source)
 
 				} else if !present {
 					e.NewElevator(message.Elevator)
@@ -72,10 +74,11 @@ func main() {
 				e.UpdateMaster(-1)
 
 			case ELEVATOR_DATA:
+
 				if message.Elevator.Self_id == e.Self_id {
-					//Println("Mottok egen melding")
+					//Your own message. Do nothing
 				} else {
-					//Println("Mottok annen heismelding...")
+
 					_, present := e.Elevators[message.Elevator.Self_id]
 
 					if present { //Update the elevatordata
@@ -83,13 +86,16 @@ func main() {
 						//	Println("Det var en oppdatering")
 					}
 				}
+
 			case ORDER_COMMAND:
+
 				if message.Target == e.Self_id {
-					Println("En ektern kommando fra master ble sent til meg:DDD")
-					//e.AddExternalOrders(message.Floor, message.ButtonType)
+					Println("En ektern kommando fra master ble sent til meg")
 					AddExternalOrders(e.Elevators[e.Self_id], message.Floor, message.ButtonType)
 				}
+
 			case LAMP_MESSAGE:
+
 				ElevSetButtonLamp(message.ButtonType, message.Floor, 0)
 
 			case GET_UP_TO_DATE:
@@ -109,20 +115,17 @@ func main() {
 
 			if buttonMessage.ID == BUTTON_EXTERNAL {
 				fromMain <- buttonMessage
-
-				//en bool som sier at ordre har blitt sent
-				//kanskje ha en funksjon som sjekker at master plukker den opp
 				Println("Sender eksterntknappetrykk ut")
 
 			} else if buttonMessage.ID == BUTTON_INTERNAL {
-				AddInternalOrders(e.Elevators[e.Self_id],buttonMessage.Floor, BTN_CMD)
+				AddInternalOrders(e.Elevators[e.Self_id], buttonMessage.Floor, BTN_CMD)
 				Println("bais")
 			}
 
 		case <-broadcastTicker:
 			BroadcastElevatorInfo(*e.Elevators[e.Self_id], fromMain)
 			//Println(e.Elevators[Self_id].Internal_orders)
-			}
 
+		}
 	}
 }

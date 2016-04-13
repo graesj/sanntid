@@ -9,7 +9,7 @@ import (
 )
 
 const (
-	PORT = ":20025"
+	PORT = ":20001"
 )
 
 //Sending and receiving data from UDP-multicast-network
