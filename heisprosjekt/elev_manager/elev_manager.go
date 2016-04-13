@@ -81,23 +81,7 @@ func (e *elev_manager) OnConnectionTimeout(id int, fromMain chan Message, elev E
 
 }
 
-func (e *elev_manager) shouldIChangeDir(planned_dir int) bool {
-	switch planned_dir {
-	case DIR_UP:
-		for floor := e.Elevators[e.Self_id].Current_Floor; floor < N_FLOORS; floor++ {
-			if e.Elevators[e.Self_id].Internal_orders[BTN_UP][floor] == 1 || e.Elevators[e.Self_id].Internal_orders[BTN_CMD][floor] == 1 {
-				return false
-			}
-		}
-	case DIR_DOWN:
-		for floor := e.Elevators[e.Self_id].Current_Floor; floor >= 0; floor-- {
-			if e.Elevators[e.Self_id].Internal_orders[BTN_DOWN][floor] == 1 || e.Elevators[e.Self_id].Internal_orders[BTN_CMD][floor] == 1 {
-				return false
-			}
-		}
-	}
-	return true
-}
+
 
 /*
 func (e *elev_manager) AddInternalOrders(floor int, button int) {

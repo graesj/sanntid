@@ -22,15 +22,23 @@ func ProcessElevOrders(elev * Elevator, fromMain chan Message) {
 	mutex.Unlock()
 	lastFloor := e.Current_Floor
 
+	changeDir := false
+
 
 	for {
 		//Copy to ensure new data up to date jalla
 		mutex.Lock()
 		e = elev
 		mutex.Unlock()
+		Println("COOOOOOOOOOOOOPIED ELEV: ")
+		Println(e.Current_Dir)
+		Println(e.Planned_Dir)
+		Println(e.State)
+		Println(e.Internal_orders)
 
 		switch e.State {
 		case STATE_IDLE:
+			Println("sad")
 		/*	select {
 
 				case <-engineCheck.C:
@@ -61,7 +69,6 @@ func ProcessElevOrders(elev * Elevator, fromMain chan Message) {
 					lastFloor = e.Current_Floor
 					engineCheck.Reset(3 * time.Second)
 				}
-
 			default:
 			}
 
@@ -74,13 +81,14 @@ func ProcessElevOrders(elev * Elevator, fromMain chan Message) {
 
 			switch e.Current_Dir {
 			case DIR_UP:
-
 				ElevSetMotorDirection(DIR_UP)
+				time.Sleep(10*time.Millisecond)
+
 				current_floor = ElevGetFloorSensorSignal()
 				if current_floor != -1 {
 					UpdateFloorLight(current_floor)
-
 					e.Current_Floor = current_floor
+					
 					if e.Internal_orders[BTN_CMD][current_floor] == 1 {
 						e.Current_Dir = DIR_STOP
 						if e.Planned_Dir == DIR_UP {
@@ -88,7 +96,7 @@ func ProcessElevOrders(elev * Elevator, fromMain chan Message) {
 						}
 						time.AfterFunc(2*time.Second,func() {removeOrders(current_floor, BTN_CMD, fromMain, elev)})
 						e.State = STATE_DOOROPEN
-						break
+						continue
 					}
 					if e.Planned_Dir == DIR_DOWN {
 						e.Furthest_Floor = calcFurthestFloor(e.Planned_Dir, e)
@@ -96,9 +104,9 @@ func ProcessElevOrders(elev * Elevator, fromMain chan Message) {
 						if e.Internal_orders[BTN_DOWN][current_floor] == 1 {
 							if e.Furthest_Floor == current_floor {
 								time.AfterFunc(2*time.Second,func() {removeOrders(current_floor, BTN_DOWN, fromMain, elev)})
-								e.Current_Dir = DIR_STOP
+								e.Current_Dir = DIR_DOWN
 								e.State = STATE_DOOROPEN
-								break
+								continue
 							}
 						}
 					} else if e.Planned_Dir == DIR_UP {
@@ -106,12 +114,21 @@ func ProcessElevOrders(elev * Elevator, fromMain chan Message) {
 							time.AfterFunc(2*time.Second,func(){removeOrders(current_floor, BTN_UP, fromMain, elev)})
 							e.Current_Dir = DIR_STOP
 							e.State = STATE_DOOROPEN
-							break
+							continue
 						}
 					}
+					changeDir = shouldIChangeDir(DIR_UP,e)
+					if changeDir {
+						ElevSetMotorDirection(DIR_STOP)
+						e.Planned_Dir = e.Current_Dir
+						e.Current_Dir = DIR_STOP
+						continue
+					}
 				}
+				
 			case DIR_DOWN:
 				ElevSetMotorDirection(DIR_DOWN)
+				time.Sleep(10*time.Millisecond)
 
 				current_floor = ElevGetFloorSensorSignal()
 				if current_floor != -1 {
@@ -122,9 +139,8 @@ func ProcessElevOrders(elev * Elevator, fromMain chan Message) {
 							time.AfterFunc(2*time.Second,func(){removeOrders(current_floor, BTN_DOWN, fromMain, elev)})
 						}
 						time.AfterFunc(2*time.Second,func() {removeOrders(current_floor, BTN_CMD, fromMain, elev)})
-						e.Current_Dir = DIR_STOP
 						e.State = STATE_DOOROPEN
-						break
+						continue
 					}
 					if e.Planned_Dir == DIR_UP {
 						e.Furthest_Floor = calcFurthestFloor(e.Planned_Dir, e)
@@ -132,7 +148,7 @@ func ProcessElevOrders(elev * Elevator, fromMain chan Message) {
 						if e.Internal_orders[BTN_UP][current_floor] == 1 {
 							if e.Furthest_Floor == current_floor {
 								time.AfterFunc(2*time.Second,func() {removeOrders(current_floor, BTN_UP, fromMain, elev)})
-								e.Current_Dir = DIR_STOP
+								e.Current_Dir = DIR_UP
 								e.State = STATE_DOOROPEN
 								break
 							}
@@ -140,13 +156,22 @@ func ProcessElevOrders(elev * Elevator, fromMain chan Message) {
 					} else if e.Planned_Dir == DIR_DOWN {
 						if e.Internal_orders[BTN_DOWN][current_floor] == 1 {
 							time.AfterFunc(2*time.Second,func(){removeOrders(current_floor, BTN_DOWN, fromMain, elev)})
-							e.Current_Dir = DIR_STOP
 							e.State = STATE_DOOROPEN
 							break
 						}
 					}
+
+					changeDir = shouldIChangeDir(DIR_DOWN, e)
+					if changeDir {
+						ElevSetMotorDirection(DIR_STOP)
+						e.Planned_Dir = e.Current_Dir
+						e.Current_Dir = DIR_STOP
+						continue
+					}
 				}
+
 			case DIR_STOP:
+
 				ElevSetMotorDirection(DIR_STOP)
 				boll := true
 				for floor := 0; floor < N_FLOORS; floor++ {
@@ -162,15 +187,16 @@ func ProcessElevOrders(elev * Elevator, fromMain chan Message) {
 					e.Current_Dir = DIR_STOP
 					e.Planned_Dir = DIR_STOP
 					e.State = STATE_IDLE
-					break
+					continue
 				}
-
 				e.Furthest_Floor = -1
 				//e.Planned_Dir = DIR_STOP
 				checkForOrdersAndDirChange(e, fromMain)
 			}
 
 		case STATE_DOOROPEN:
+			
+			changeDir = false
 			ElevSetMotorDirection(DIR_STOP)
 			ElevSetDoorOpenLamp(1)
 			engineCheck.Stop()
@@ -185,16 +211,61 @@ func ProcessElevOrders(elev * Elevator, fromMain chan Message) {
 			engineCheck.Reset(3 * time.Second)
 			ElevSetMotorDirection(DIR_STOP)
 		}
-		
 		mutex.Lock()
 		elev.State = e.State
 		elev.Current_Dir = e.Current_Dir
 		elev.Planned_Dir = e.Planned_Dir
-		e.Furthest_Floor = e.Furthest_Floor
+		elev.Furthest_Floor = e.Furthest_Floor
+		for floor:= 0; floor < N_FLOORS; floor++ {
+			for buttonType := 0; buttonType < 3; buttonType++ {
+				elev.Internal_orders[buttonType][floor] = e.Internal_orders[buttonType][floor]
+			}
+		}
 		mutex.Unlock()
-
-		time.Sleep(10*time.Millisecond)
 	}
+}
+
+
+
+func shouldIChangeDir(current_dir int, elev *Elevator) bool {
+	mutex := &sync.Mutex{}
+	mutex.Lock()
+	e := elev
+	mutex.Unlock()
+	switch current_dir {
+	case DIR_UP:
+		for floor:=e.Current_Floor;floor<N_FLOORS;floor++{
+			for buttonType:=0;buttonType<3;buttonType+=2{
+				if e.Internal_orders[buttonType][floor] == 1{
+					return false
+				}
+			}
+		}
+		for floor := 0; floor < N_FLOORS; floor++ {
+			if e.Internal_orders[BTN_DOWN][floor] == 1 {
+				if floor > e.Current_Floor {
+					return false
+				}
+			}
+		}
+
+	case DIR_DOWN:
+		for floor:=e.Current_Floor;floor>=0;floor--{
+			for buttonType:=1;buttonType<3;buttonType++{
+				if e.Internal_orders[buttonType][floor] == 1{
+					return false
+				}
+			}
+		}
+		for floor := 0; floor < N_FLOORS; floor++ {
+			if e.Internal_orders[BTN_UP][floor] == 1 {
+				if floor < e.Current_Floor {
+					return false
+				}
+			}
+		}
+	}
+	return true
 }
 
 func calcFurthestFloor(planned_dir int, e *Elevator) int {
@@ -264,87 +335,88 @@ func removeOrders(floor int, button int, fromMain chan Message, e *Elevator) { /
  	mutex.Unlock()
 }
 
-func checkForOrdersAndDirChange(elev *Elevator, fromMain chan Message) {
-	foundFloor := 0
+func goTowardsFloor (elev *Elevator, floor int, buttonType int, fromMain chan Message) {
+	foundFloor := false
 	mutex := &sync.Mutex{}
 	mutex.Lock()
 	e := elev
 	mutex.Unlock()
+	if floor < e.Current_Floor {
+		e.Current_Dir = DIR_DOWN
+		if buttonType == BTN_CMD {
+			e.Planned_Dir = DIR_DOWN
+		}
+	} else if floor > e.Current_Floor {
+		e.Current_Dir = DIR_UP
+		if buttonType == BTN_CMD {
+			e.Planned_Dir = DIR_UP
+		}
+	} else {
+		e.State = STATE_DOOROPEN
+		mutex.Lock()
+		elev.Current_Dir = e.Current_Dir
+		elev.Planned_Dir = e.Planned_Dir
+		elev.State = e.State
+		mutex.Unlock()
+		foundFloor = true
+		removeOrders(floor, buttonType, fromMain, elev)
+		Println("this is the end")
+	}
+	if foundFloor == false {
+		if buttonType == BTN_UP {
+			e.Planned_Dir = DIR_UP
+		} else if buttonType == BTN_DOWN {
+			e.Planned_Dir = DIR_DOWN
+		}
+		mutex.Lock()
+		elev.Current_Dir = e.Current_Dir
+		elev.Planned_Dir = e.Planned_Dir
+		mutex.Unlock()
+	}
 
+}
+
+func checkForOrdersAndDirChange(elev *Elevator, fromMain chan Message) {
+	//foundFloor := 0
+	Println("SAAAP")
+	mutex := &sync.Mutex{}
+	mutex.Lock()
+	e := elev
+	mutex.Unlock()
 	switch e.Planned_Dir {
 	case DIR_UP:
-		for floor:= 0; floor < N_FLOORS; floor++ {
-			if e.Internal_orders[BTN_UP][floor] == 1 {
-				foundFloor = 1
-				if e.Current_Floor > floor {
-					e.Current_Dir = DIR_DOWN
-					break
-				} else if e.Current_Floor < floor{
-					e.Current_Dir = DIR_UP
-					break
-				} else{
-					time.AfterFunc(2*time.Second,func() {removeOrders(e.Current_Floor, BTN_UP, fromMain, elev)})
-					e.Current_Dir = DIR_STOP
-					e.State = STATE_DOOROPEN
+		for buttonType := BTN_CMD; buttonType >= 0; buttonType-- {
+			for floor := N_FLOORS-1; floor >=0; floor-- {
+				if e.Internal_orders[buttonType][floor] == 1 {
+					goTowardsFloor(elev, floor, buttonType, fromMain)
+					//foundFloor = 1
+					buttonType = -1
 					break
 				}
 			}
-		}
-		if foundFloor == 0 {
-			e.Planned_Dir = DIR_STOP
 		}
 	case DIR_DOWN:
-		for floor:= N_FLOORS-1; floor >= 0; floor-- {
-			if e.Internal_orders[BTN_DOWN][floor] == 1 {
-				foundFloor = 1
-				if e.Current_Floor > floor {
-					e.Current_Dir = DIR_DOWN
-					break
-				} else if e.Current_Floor < floor {
-					e.Current_Dir = DIR_UP
-					break
-				} else {
-					time.AfterFunc(2*time.Second,func() {removeOrders(e.Current_Floor, BTN_UP, fromMain, elev)})
-					e.Current_Dir = DIR_STOP
-					e.State = STATE_DOOROPEN
+		for buttonType := BTN_CMD; buttonType < 3; buttonType++ {
+			if buttonType == 1{
+				buttonType = 3
+				break
+			}
+			for floor := 0; floor < N_FLOORS; floor++ {
+				if e.Internal_orders[buttonType][floor] == 1 {
+					goTowardsFloor(elev, floor, buttonType, fromMain)
+					//foundFloor = 1
+					buttonType = 3
 					break
 				}
 			}
-		}
-		if foundFloor == 0 {
-			e.Planned_Dir = DIR_STOP
+			buttonType -= 3
 		}
 	case DIR_STOP:
-		Println("DIR STOP")
-		for buttonType := BTN_CMD; buttonType >= 0; buttonType-- {
+		for buttonType := 0; buttonType < 3; buttonType++ {
 			for floor := 0; floor < N_FLOORS; floor++ {
 				if e.Internal_orders[buttonType][floor] == 1 {
-					foundFloor = 1
-					if buttonType == BTN_UP {
-						Println("Setting Planned_Dir = DIR_UP")
-						e.Planned_Dir = DIR_UP
-					} else if buttonType == BTN_DOWN {
-						Println("Setting Planned_Dir = DIR_DOWN")
-						e.Planned_Dir = DIR_DOWN						
-					} else if buttonType == BTN_CMD{
-						if e.Current_Floor > floor {
-							e.Planned_Dir = DIR_DOWN
-						} else if e.Current_Floor < floor {
-							Println("DETTE SKJER")
-							e.Planned_Dir = DIR_UP
-						}
-					}
-					if e.Current_Floor > floor {
-						e.Current_Dir = DIR_DOWN
-					} else if e.Current_Floor < floor {
-						Println("CORRREECTO")
-						e.Current_Dir = DIR_UP
-					} else {
-						time.AfterFunc(2*time.Second,func() {removeOrders(e.Current_Floor, buttonType, fromMain, elev)})
-						e.Current_Dir = DIR_STOP
-						e.State = STATE_DOOROPEN
-					}
-					buttonType = 0 //Asserting break out of nested loop
+					goTowardsFloor(elev, floor, buttonType, fromMain)
+					buttonType = 3
 					break
 				}
 			}

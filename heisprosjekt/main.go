@@ -121,8 +121,16 @@ func main() {
 
 		case <-broadcastTicker:
 			BroadcastElevatorInfo(*e.Elevators[e.Self_id], fromMain)
-			//Println(e.Elevators[Self_id].Internal_orders)
+			/*Println(e.Elevators[e.Self_id].Current_Dir)
+			Println(e.Elevators[e.Self_id].Planned_Dir)
+			Println(e.Elevators[e.Self_id].State)
+			Println(e.Elevators[e.Self_id].Internal_orders)*/
 			}
 
 	}
 }
+
+/*
+1 
+-1
+*/
