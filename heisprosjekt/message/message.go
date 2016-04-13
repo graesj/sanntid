@@ -15,7 +15,7 @@ const (
 	REMOVE_ELEVATOR = 5
 	ELEVATOR_DATA   = 6
 	ORDER_COMMAND   = 7
-	LampID          = 8
+	LAMP_MESSAGE    = 8
 	GET_UP_TO_DATE  = 9
 )
 

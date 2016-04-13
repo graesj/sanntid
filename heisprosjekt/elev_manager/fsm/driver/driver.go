@@ -94,3 +94,17 @@ func CheckButtons(buttonChan chan Message) {
 		}
 	}
 }
+
+func UpdateButtonLamp(button int, floor int, lampChan chan Message) {
+	switch button {
+	case BTN_CMD:
+		ElevSetButtonLamp(button, floor, 0)
+	default:
+		lampMessage := Message{ID: LAMP_MESSAGE, ButtonType: button, Floor: floor}
+		lampChan <- lampMessage
+	}
+}
+
+func UpdateFloorLight(floor int) {
+	ElevSetFloorLamp(floor)
+}

@@ -26,4 +26,8 @@ const (
 	ERROR_NONE    = 0
 	ERROR_NETWORK = 1
 	ERROR_MOTOR   = 2
+
+	STATE_IDLE     = 0
+	STATE_RUNNING  = 1
+	STATE_DOOROPEN = 2
 )
