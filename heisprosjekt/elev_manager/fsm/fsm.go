@@ -72,7 +72,6 @@ func ProcessElevOrders(elev *Elevator, fromMain chan Message) {
 					e.Current_Floor = current_floor
 
 					if e.Orders[BTN_CMD][current_floor] == 1 {
-						e.Current_Dir = DIR_STOP
 						if e.Planned_Dir == DIR_UP {
 							time.AfterFunc(2*time.Second, func() { removeOrders(current_floor, BTN_UP, fromMain, elev) })
 						}
@@ -94,7 +93,6 @@ func ProcessElevOrders(elev *Elevator, fromMain chan Message) {
 					} else if e.Planned_Dir == DIR_UP {
 						if e.Orders[BTN_UP][current_floor] == 1 {
 							time.AfterFunc(2*time.Second, func() { removeOrders(current_floor, BTN_UP, fromMain, elev) })
-							e.Current_Dir = DIR_STOP
 							e.State = STATE_DOOROPEN
 							break
 						}
