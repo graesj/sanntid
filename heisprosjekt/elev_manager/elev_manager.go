@@ -14,7 +14,7 @@ import (
 type elev_manager struct {
 	master    int
 	Self_id   int
-	Elevators map[int]*Elevator //creates a hash table with 'int' as a keyType, and '*Elevator' as a valueType
+	Elevators map[int]*Elevator
 }
 
 func MakeElevManager() elev_manager {
@@ -55,49 +55,29 @@ func (e *elev_manager) IsMaster() bool {
 	}
 }
 
-func (e *elev_manager) OnConnectionTimeout(id int, fromMain chan Message, elev Elevator) {
+func (e *elev_manager) OnConnectionTimeout(disc_id int, fromMain chan Message, elev Elevator) {
 	Print("Disconnected : ")
-	Println(id)
-	e.UpdateMaster(id)
+	Println(disc_id)
+	e.UpdateMaster(disc_id)
 
-	if id != e.Self_id && e.IsMaster() {
-		Println("Dette skal bare skje med master")
+	if disc_id != e.Self_id && e.IsMaster() {
 		for i := 0; i < N_FLOORS; i++ {
-			if e.Elevators[id].Internal_orders[BTN_UP][i] == 1 {
+			if e.Elevators[disc_id].Orders[BTN_UP][i] == 1 {
 				buttonMessage := Message{ID: BUTTON_EXTERNAL, ButtonType: BTN_UP, Floor: i}
 				fromMain <- buttonMessage
-			} else if e.Elevators[id].Internal_orders[BTN_DOWN][i] == 1 {
+			} else if e.Elevators[disc_id].Orders[BTN_DOWN][i] == 1 {
 				buttonMessage := Message{ID: BUTTON_EXTERNAL, ButtonType: BTN_DOWN, Floor: i}
 				fromMain <- buttonMessage
 			}
 		}
 
 	}
-	if id != e.Self_id {
-		e.Elevators[id].ErrorType = elev.ErrorType
+	if disc_id != e.Self_id {
+		e.Elevators[disc_id].ErrorType = elev.ErrorType
 	}
-
 }
 
-func (e *elev_manager) shouldIChangeDir(planned_dir int) bool {
-	switch planned_dir {
-	case DIR_UP:
-		for floor := e.Elevators[e.Self_id].Current_Floor; floor < N_FLOORS; floor++ {
-			if e.Elevators[e.Self_id].Internal_orders[BTN_UP][floor] == 1 || e.Elevators[e.Self_id].Internal_orders[BTN_CMD][floor] == 1 {
-				return false
-			}
-		}
-	case DIR_DOWN:
-		for floor := e.Elevators[e.Self_id].Current_Floor; floor >= 0; floor-- {
-			if e.Elevators[e.Self_id].Internal_orders[BTN_DOWN][floor] == 1 || e.Elevators[e.Self_id].Internal_orders[BTN_CMD][floor] == 1 {
-				return false
-			}
-		}
-	}
-	return true
-}
-
-func (e *elev_manager) ElevatorUpdate(elev Elevator) {
+func (e *elev_manager) OnElevatorUpdate(elev Elevator) {
 	e.Elevators[elev.Self_id] = &elev
 }
 
@@ -115,11 +95,11 @@ func (e *elev_manager) DetermineTargetElev(button int, floor int) int {
 				return key
 			}
 
-			if elev.Internal_orders[button][floor] == 1 {
+			if elev.Orders[button][floor] == 1 {
 				return key
 			}
 
-			cost = e.GetCostForOrder(key, elev, button, floor)
+			cost = e.getCostForOrder(key, elev, button, floor)
 
 			if cost < min {
 				ideal_elev = key
@@ -130,7 +110,50 @@ func (e *elev_manager) DetermineTargetElev(button int, floor int) int {
 	return ideal_elev
 }
 
-func (e *elev_manager) GetCostForOrder(key int, elev *Elevator, button int, order_floor int) int {
+func (e *elev_manager) UpdateMaster(id int) {
+	newMaster := 1000
+
+	for key, _ := range e.Elevators {
+		Print(key)
+		if key != id && key < newMaster {
+			newMaster = key
+
+		}
+	}
+	if newMaster == 1000 {
+		//New master could not be determined.
+	} else {
+		e.master = newMaster
+	}
+}
+
+func (e *elev_manager) CheckIfOrderIsReceived(message Message, fromMain chan Message) {
+	_, present := e.Elevators[message.Target]
+
+	if present {
+
+		if e.Elevators[message.Target].Orders[message.ButtonType][message.Floor] != 1 {
+			fromMain <- message
+		}
+
+	}
+}
+
+func (e *elev_manager) ResendInternalOrders(fromMain chan Message, id int) {
+	m := Message{ID: GET_UP_TO_DATE, Target: id, Elevator: *e.Elevators[id]}
+	fromMain <- m
+}
+
+func (e *elev_manager) CopyInternalOrders(elev Elevator) {
+	for i := 0; i < N_FLOORS; i++ {
+		if elev.Orders[BTN_CMD][i] == 1 {
+			ElevSetButtonLamp(BTN_CMD, i, 1)
+			AddInternalOrders(e.Elevators[e.Self_id], i, BTN_CMD)
+		}
+	}
+}
+
+func (e *elev_manager) getCostForOrder(key int, elev *Elevator, button int, order_floor int) int {
 	search_dir := 1
 	if elev.Planned_Dir != DIR_STOP {
 		search_dir = elev.Planned_Dir
@@ -155,11 +178,11 @@ func (e *elev_manager) GetCostForOrder(key int, elev *Elevator, button int, orde
 			}
 		}
 
-		if e.OrdersOnFloorInDir(key, search_dir, search_floor) {
+		if e.ordersOnFloorInDir(key, search_dir, search_floor) {
 			cost += 3
 		}
 
-		if (e.MoreOrdersInDir(key, search_dir, search_floor)) || (bool(math.Abs(float64(order_floor-elev.Current_Floor)) > math.Abs(float64(order_floor-search_floor)) && !order_floor_passed_once)) {
+		if (e.moreOrdersInDir(key, search_dir, search_floor)) || (bool(math.Abs(float64(order_floor-elev.Current_Floor)) > math.Abs(float64(order_floor-search_floor)) && !order_floor_passed_once)) {
 			cost += 1
 		}
 	}
@@ -167,72 +190,21 @@ func (e *elev_manager) GetCostForOrder(key int, elev *Elevator, button int, orde
 	return cost
 }
 
-func (e *elev_manager) MoreOrdersInDir(id int, dir int, floor int) bool {
+func (e *elev_manager) moreOrdersInDir(id int, dir int, floor int) bool {
 
 	for i := (floor + dir); i >= 0 && i < N_FLOORS; i = i + dir {
 
-		if e.Elevators[id].Internal_orders[BTN_CMD][i] == 1 || e.Elevators[id].Internal_orders[BTN_UP][i] == 1 || e.Elevators[id].Internal_orders[BTN_DOWN][i] == 1 {
+		if e.Elevators[id].Orders[BTN_CMD][i] == 1 || e.Elevators[id].Orders[BTN_UP][i] == 1 || e.Elevators[id].Orders[BTN_DOWN][i] == 1 {
 			return true
-
 		}
 	}
 
 	return false
 }
 
-func (e *elev_manager) OrdersOnFloorInDir(id int, dir int, floor int) bool {
-	//Vår heis
-	if e.Elevators[id].Internal_orders[BTN_CMD][floor] == 1 || dir == DIR_UP && e.Elevators[id].Internal_orders[BTN_UP][floor] == 1 || dir == DIR_DOWN && e.Elevators[id].Internal_orders[BTN_DOWN][floor] == 1 {
+func (e *elev_manager) ordersOnFloorInDir(id int, dir int, floor int) bool {
+	if e.Elevators[id].Orders[BTN_CMD][floor] == 1 || dir == DIR_UP && e.Elevators[id].Orders[BTN_UP][floor] == 1 || dir == DIR_DOWN && e.Elevators[id].Orders[BTN_DOWN][floor] == 1 {
 		return true
 	}
 	return false
-}
-
-func (e *elev_manager) UpdateMaster(id int) {
-	//Set id = -1 if and ID is not to be exluded
-	nyMaster := 1000
-
-	for key, _ := range e.Elevators {
-		Print(key)
-		if key != id && key < nyMaster {
-			nyMaster = key
-
-		}
-	}
-	if nyMaster == 1000 {
-		//New master could not be determined. This error
-	} else {
-		e.master = nyMaster
-
-	}
-}
-
-func (e *elev_manager) CheckIfOrderIsReceived(message Message, fromMain chan Message) {
-	//Called by master 1s after a command has been sent out.
-	_, present := e.Elevators[message.Target]
-
-	if present {
-
-		if e.Elevators[message.Target].Internal_orders[message.ButtonType][message.Floor] != 1 {
-			fromMain <- message
-			Println("Resending message")
-		}
-
-	}
-}
-
-func (e *elev_manager) ResendInternalOrders(fromMain chan Message, id int) {
-	m := Message{ID: GET_UP_TO_DATE, Target: id, Elevator: *e.Elevators[id]}
-	fromMain <- m
-}
-
-func (e *elev_manager) CopyInternalOrder(elev Elevator) {
-	Println("Henter tilbake køen min")
-	Println(elev.Internal_orders)
-	for i := 0; i < N_FLOORS; i++ {
-		if elev.Internal_orders[BTN_CMD][i] == 1 {
-			ElevSetButtonLamp(BTN_CMD, i, 1)
-			AddInternalOrders(e.Elevators[e.Self_id], i, BTN_CMD)
-		}
-	}
 }

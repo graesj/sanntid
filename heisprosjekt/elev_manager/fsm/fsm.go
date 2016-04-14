@@ -1,20 +1,21 @@
 package fsm
 
 import (
-	. "../.././message"
-	. "../.././structs"
-	. "./driver"
 	. "fmt"
 	"os"
 	"sync"
 	"time"
+
+	. "../.././message"
+	. "../.././structs"
+	. "./driver"
 )
 
 func ProcessElevOrders(elev *Elevator, fromMain chan Message) {
 	current_floor := -1
 	engineTrouble := false
 	engineCheck := time.NewTimer(3 * time.Second)
-	engineCheck.Stop() //
+	engineCheck.Stop()
 	mutex := &sync.Mutex{}
 	mutex.Lock()
 	e := elev
@@ -24,7 +25,6 @@ func ProcessElevOrders(elev *Elevator, fromMain chan Message) {
 	changeDir := false
 
 	for {
-		//Copy to ensure new data up to date jalla
 		mutex.Lock()
 		e = elev
 		mutex.Unlock()
@@ -33,7 +33,7 @@ func ProcessElevOrders(elev *Elevator, fromMain chan Message) {
 		case STATE_IDLE:
 			for floor := 0; floor < N_FLOORS; floor++ {
 				for buttonType := 0; buttonType < 3; buttonType++ {
-					if e.Internal_orders[buttonType][floor] == 1 {
+					if e.Orders[buttonType][floor] == 1 {
 						engineCheck.Reset(3 * time.Second)
 						e.State = STATE_RUNNING
 					}
@@ -43,9 +43,6 @@ func ProcessElevOrders(elev *Elevator, fromMain chan Message) {
 
 			select {
 			case <-engineCheck.C:
-				Print(lastFloor)
-				Print(" = ")
-				Println(e.Current_Floor)
 				if lastFloor == e.Current_Floor {
 					engineTrouble = true
 				} else {
@@ -67,14 +64,13 @@ func ProcessElevOrders(elev *Elevator, fromMain chan Message) {
 			switch e.Current_Dir {
 			case DIR_UP:
 				ElevSetMotorDirection(DIR_UP)
-				time.Sleep(10 * time.Millisecond)
 
 				current_floor = ElevGetFloorSensorSignal()
 				if current_floor != -1 {
 					UpdateFloorLight(current_floor)
 					e.Current_Floor = current_floor
 
-					if e.Internal_orders[BTN_CMD][current_floor] == 1 {
+					if e.Orders[BTN_CMD][current_floor] == 1 {
 						e.Current_Dir = DIR_STOP
 						if e.Planned_Dir == DIR_UP {
 							time.AfterFunc(2*time.Second, func() { removeOrders(current_floor, BTN_UP, fromMain, elev) })
@@ -86,7 +82,7 @@ func ProcessElevOrders(elev *Elevator, fromMain chan Message) {
 					if e.Planned_Dir == DIR_DOWN {
 						e.Furthest_Floor = calcFurthestFloor(e.Planned_Dir, e)
 
-						if e.Internal_orders[BTN_DOWN][current_floor] == 1 {
+						if e.Orders[BTN_DOWN][current_floor] == 1 {
 							if e.Furthest_Floor == current_floor {
 								time.AfterFunc(2*time.Second, func() { removeOrders(current_floor, BTN_DOWN, fromMain, elev) })
 								e.Current_Dir = DIR_DOWN
@@ -95,7 +91,7 @@ func ProcessElevOrders(elev *Elevator, fromMain chan Message) {
 							}
 						}
 					} else if e.Planned_Dir == DIR_UP {
-						if e.Internal_orders[BTN_UP][current_floor] == 1 {
+						if e.Orders[BTN_UP][current_floor] == 1 {
 							time.AfterFunc(2*time.Second, func() { removeOrders(current_floor, BTN_UP, fromMain, elev) })
 							e.Current_Dir = DIR_STOP
 							e.State = STATE_DOOROPEN
@@ -113,13 +109,12 @@ func ProcessElevOrders(elev *Elevator, fromMain chan Message) {
 
 			case DIR_DOWN:
 				ElevSetMotorDirection(DIR_DOWN)
-				time.Sleep(10 * time.Millisecond)
 
 				current_floor = ElevGetFloorSensorSignal()
 				if current_floor != -1 {
 					UpdateFloorLight(current_floor)
 					e.Current_Floor = current_floor
-					if e.Internal_orders[BTN_CMD][current_floor] == 1 {
+					if e.Orders[BTN_CMD][current_floor] == 1 {
 						if e.Planned_Dir == DIR_DOWN {
 							time.AfterFunc(2*time.Second, func() { removeOrders(current_floor, BTN_DOWN, fromMain, elev) })
 						}
@@ -130,7 +125,7 @@ func ProcessElevOrders(elev *Elevator, fromMain chan Message) {
 					if e.Planned_Dir == DIR_UP {
 						e.Furthest_Floor = calcFurthestFloor(e.Planned_Dir, e)
 
-						if e.Internal_orders[BTN_UP][current_floor] == 1 {
+						if e.Orders[BTN_UP][current_floor] == 1 {
 							if e.Furthest_Floor == current_floor {
 								time.AfterFunc(2*time.Second, func() { removeOrders(current_floor, BTN_UP, fromMain, elev) })
 								e.Current_Dir = DIR_UP
@@ -139,13 +134,12 @@ func ProcessElevOrders(elev *Elevator, fromMain chan Message) {
 							}
 						}
 					} else if e.Planned_Dir == DIR_DOWN {
-						if e.Internal_orders[BTN_DOWN][current_floor] == 1 {
+						if e.Orders[BTN_DOWN][current_floor] == 1 {
 							time.AfterFunc(2*time.Second, func() { removeOrders(current_floor, BTN_DOWN, fromMain, elev) })
 							e.State = STATE_DOOROPEN
 							break
 						}
 					}
-
 					changeDir = shouldIChangeDir(DIR_DOWN, e)
 					if changeDir {
 						ElevSetMotorDirection(DIR_STOP)
@@ -161,7 +155,7 @@ func ProcessElevOrders(elev *Elevator, fromMain chan Message) {
 				boll := true
 				for floor := 0; floor < N_FLOORS; floor++ {
 					for buttonType := 0; buttonType < 3; buttonType++ {
-						if e.Internal_orders[buttonType][floor] == 1 {
+						if e.Orders[buttonType][floor] == 1 {
 							boll = false
 						}
 					}
@@ -175,7 +169,6 @@ func ProcessElevOrders(elev *Elevator, fromMain chan Message) {
 					break
 				}
 				e.Furthest_Floor = -1
-				//e.Planned_Dir = DIR_STOP
 				checkForOrdersAndDirChange(e, fromMain)
 			}
 
@@ -203,46 +196,72 @@ func ProcessElevOrders(elev *Elevator, fromMain chan Message) {
 		elev.Furthest_Floor = e.Furthest_Floor
 		for floor := 0; floor < N_FLOORS; floor++ {
 			for buttonType := 0; buttonType < 3; buttonType++ {
-				elev.Internal_orders[buttonType][floor] = e.Internal_orders[buttonType][floor]
+				elev.Orders[buttonType][floor] = e.Orders[buttonType][floor]
 			}
 		}
 		mutex.Unlock()
 	}
 }
 
-func shouldIChangeDir(current_dir int, elev *Elevator) bool {
+func AddExternalOrders(elev *Elevator, floor int, buttonType int) {
+	var mutex = &sync.Mutex{}
+	mutex.Lock()
+	if buttonType == BTN_UP {
+		elev.Orders[BTN_UP][floor] = 1
+
+	} else if buttonType == BTN_DOWN {
+		elev.Orders[BTN_DOWN][floor] = 1
+
+	}
+	mutex.Unlock()
+}
+
+func AddInternalOrders(elev *Elevator, floor int, button int) {
 	mutex := &sync.Mutex{}
 	mutex.Lock()
-	e := elev
+
+	switch button {
+	case BTN_UP:
+		elev.Orders[BTN_UP][floor] = 1
+	case BTN_DOWN:
+		elev.Orders[BTN_DOWN][floor] = 1
+	case BTN_CMD:
+		ElevSetButtonLamp(BTN_CMD, floor, 1)
+		elev.Orders[BTN_CMD][floor] = 1
+	}
 	mutex.Unlock()
+}
+
+func shouldIChangeDir(current_dir int, elev *Elevator) bool {
+
 	switch current_dir {
 	case DIR_UP:
-		for floor := e.Current_Floor; floor < N_FLOORS; floor++ {
+		for floor := elev.Current_Floor; floor < N_FLOORS; floor++ {
 			for buttonType := 0; buttonType < 3; buttonType += 2 {
-				if e.Internal_orders[buttonType][floor] == 1 {
+				if elev.Orders[buttonType][floor] == 1 {
 					return false
 				}
 			}
 		}
 		for floor := 0; floor < N_FLOORS; floor++ {
-			if e.Internal_orders[BTN_DOWN][floor] == 1 {
-				if floor > e.Current_Floor {
+			if elev.Orders[BTN_DOWN][floor] == 1 {
+				if floor > elev.Current_Floor {
 					return false
 				}
 			}
 		}
 
 	case DIR_DOWN:
-		for floor := e.Current_Floor; floor >= 0; floor-- {
+		for floor := elev.Current_Floor; floor >= 0; floor-- {
 			for buttonType := 1; buttonType < 3; buttonType++ {
-				if e.Internal_orders[buttonType][floor] == 1 {
+				if elev.Orders[buttonType][floor] == 1 {
 					return false
 				}
 			}
 		}
 		for floor := 0; floor < N_FLOORS; floor++ {
-			if e.Internal_orders[BTN_UP][floor] == 1 {
-				if floor < e.Current_Floor {
+			if elev.Orders[BTN_UP][floor] == 1 {
+				if floor < elev.Current_Floor {
 					return false
 				}
 			}
@@ -251,63 +270,43 @@ func shouldIChangeDir(current_dir int, elev *Elevator) bool {
 	return true
 }
 
-func calcFurthestFloor(planned_dir int, e *Elevator) int {
+func calcFurthestFloor(planned_dir int, elev *Elevator) int {
 	switch planned_dir {
 	case DIR_UP:
-		for furthest_floor := 0; furthest_floor < e.Current_Floor; furthest_floor++ {
-			if e.Internal_orders[BTN_UP][furthest_floor] == 1 {
+		for furthest_floor := 0; furthest_floor < elev.Current_Floor; furthest_floor++ {
+			if elev.Orders[BTN_UP][furthest_floor] == 1 {
 				return furthest_floor
 			}
 		}
 	case DIR_DOWN:
-		for furthest_floor := N_FLOORS - 1; furthest_floor > e.Current_Floor; furthest_floor-- {
-			if e.Internal_orders[BTN_DOWN][furthest_floor] == 1 {
+		for furthest_floor := N_FLOORS - 1; furthest_floor > elev.Current_Floor; furthest_floor-- {
+			if elev.Orders[BTN_DOWN][furthest_floor] == 1 {
 				return furthest_floor
 			}
 		}
 	case DIR_STOP:
-		Println("THIS IS THE WRONG PLANNED DIR BRUH")
 		return -1
 	}
-	return e.Furthest_Floor
+	return elev.Furthest_Floor
 }
 
-func RunToFirstFloor() int {
-	ElevInit()
-
-	if ElevGetFloorSensorSignal() == -1 {
-		for ElevGetFloorSensorSignal() == -1 {
-		}
-	}
-	ElevSetMotorDirection(DIR_STOP)
-
-	if ElevGetFloorSensorSignal() != 0 {
-		for ElevGetFloorSensorSignal() != 0 {
-			ElevSetMotorDirection(DIR_DOWN)
-		}
-	}
-	ElevSetMotorDirection(DIR_STOP)
-
-	return 1
-}
-
-func removeOrders(floor int, button int, fromMain chan Message, e *Elevator) { //HEI BEDRE NAVN DA
+func removeOrders(floor int, button int, fromMain chan Message, elev *Elevator) { //HEI BEDRE NAVN DA
 	mutex := &sync.Mutex{}
 	mutex.Lock()
 	switch button {
 
 	case BTN_CMD:
-		e.Internal_orders[BTN_CMD][floor] = 0
+		elev.Orders[BTN_CMD][floor] = 0
 		ElevSetButtonLamp(button, floor, 0)
 
 	case BTN_DOWN:
-		e.Internal_orders[BTN_DOWN][floor] = 0
+		elev.Orders[BTN_DOWN][floor] = 0
 		if floor != 0 {
 			UpdateButtonLamp(BTN_DOWN, floor, fromMain)
 		}
 
 	case BTN_UP:
-		e.Internal_orders[BTN_UP][floor] = 0
+		elev.Orders[BTN_UP][floor] = 0
 		if floor != N_FLOORS-1 {
 			UpdateButtonLamp(BTN_UP, floor, fromMain)
 		}
@@ -315,7 +314,7 @@ func removeOrders(floor int, button int, fromMain chan Message, e *Elevator) { /
 	mutex.Unlock()
 }
 
-func goTowardsFloor(elev *Elevator, floor int, buttonType int, fromMain chan Message) {
+func setDirsForFloor(elev *Elevator, floor int, buttonType int, fromMain chan Message) {
 	foundFloor := false
 	mutex := &sync.Mutex{}
 	mutex.Lock()
@@ -364,8 +363,8 @@ func checkForOrdersAndDirChange(elev *Elevator, fromMain chan Message) {
 	case DIR_UP:
 		for buttonType := BTN_CMD; buttonType >= 0; buttonType-- {
 			for floor := N_FLOORS - 1; floor >= 0; floor-- {
-				if e.Internal_orders[buttonType][floor] == 1 {
-					goTowardsFloor(elev, floor, buttonType, fromMain)
+				if e.Orders[buttonType][floor] == 1 {
+					setDirsForFloor(elev, floor, buttonType, fromMain)
 					buttonType = -1
 					break
 				}
@@ -378,8 +377,8 @@ func checkForOrdersAndDirChange(elev *Elevator, fromMain chan Message) {
 				break
 			}
 			for floor := 0; floor < N_FLOORS; floor++ {
-				if e.Internal_orders[buttonType][floor] == 1 {
-					goTowardsFloor(elev, floor, buttonType, fromMain)
+				if e.Orders[buttonType][floor] == 1 {
+					setDirsForFloor(elev, floor, buttonType, fromMain)
 					buttonType = 3
 					break
 				}
@@ -389,8 +388,8 @@ func checkForOrdersAndDirChange(elev *Elevator, fromMain chan Message) {
 	case DIR_STOP:
 		for buttonType := 0; buttonType < 3; buttonType++ {
 			for floor := 0; floor < N_FLOORS; floor++ {
-				if e.Internal_orders[buttonType][floor] == 1 {
-					goTowardsFloor(elev, floor, buttonType, fromMain)
+				if e.Orders[buttonType][floor] == 1 {
+					setDirsForFloor(elev, floor, buttonType, fromMain)
 					buttonType = 3
 					break
 				}
@@ -406,33 +405,4 @@ func onMotorError(fromMain chan Message, e *Elevator) {
 	Println(e.ErrorType)
 	os.Exit(1)
 
-}
-
-func AddExternalOrders(e *Elevator, floor int, buttonType int) {
-	var mutex = &sync.Mutex{}
-	mutex.Lock()
-	if buttonType == BTN_UP {
-		e.Internal_orders[BTN_UP][floor] = 1
-
-	} else if buttonType == BTN_DOWN {
-		e.Internal_orders[BTN_DOWN][floor] = 1
-
-	}
-	mutex.Unlock()
-}
-
-func AddInternalOrders(e *Elevator, floor int, button int) {
-	mutex := &sync.Mutex{}
-	mutex.Lock()
-
-	switch button {
-	case BTN_UP:
-		e.Internal_orders[BTN_UP][floor] = 1
-	case BTN_DOWN:
-		e.Internal_orders[BTN_DOWN][floor] = 1
-	case BTN_CMD:
-		ElevSetButtonLamp(BTN_CMD, floor, 1)
-		e.Internal_orders[BTN_CMD][floor] = 1
-	}
-	mutex.Unlock()
 }

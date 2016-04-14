@@ -1,15 +1,15 @@
 package main
 
 import (
+	. "fmt"
+	"time"
+
 	. "./elev_manager"
+	. "./elev_manager/fsm"
 	. "./elev_manager/fsm/driver"
 	. "./message"
 	. "./network"
 	. "./structs"
-	//. "./utilities"
-	. "./elev_manager/fsm"
-	. "fmt"
-	"time"
 )
 
 func main() {
@@ -19,7 +19,7 @@ func main() {
 	fromMain := make(chan Message, 100)
 	toMain := make(chan Message, 100)
 
-	go Manager(fromMain, toMain)
+	go NetworkManager(fromMain, toMain)
 	go CheckButtons(buttonChan)
 	time.AfterFunc(200*time.Millisecond, func() { go ProcessElevOrders(e.Elevators[e.Self_id], fromMain) })
 
@@ -35,10 +35,9 @@ func main() {
 			case REMOVE_ELEVATOR:
 
 				if message.Source == e.Self_id {
-					//Turn of external lamps.
+					TurnOffAllExternalLights()
 
 				}
-
 				e.Elevators[message.Source].ErrorType = message.Elevator.ErrorType
 				Print("Elevator has dropped out. ID: ")
 				Println(message.Source)
@@ -73,7 +72,7 @@ func main() {
 				e.Elevators[message.Source].ErrorType = ERROR_NONE
 				e.UpdateMaster(-1)
 
-			case ELEVATOR_DATA:
+			case ELEVATOR_UPDATE:
 
 				if message.Elevator.Self_id == e.Self_id {
 					//Your own message. Do nothing
@@ -81,16 +80,14 @@ func main() {
 
 					_, present := e.Elevators[message.Elevator.Self_id]
 
-					if present { //Update the elevatordata
-						e.ElevatorUpdate(message.Elevator)
-						//	Println("Det var en oppdatering")
+					if present {
+						e.OnElevatorUpdate(message.Elevator)
 					}
 				}
 
 			case ORDER_COMMAND:
 
 				if message.Target == e.Self_id {
-					Println("En ektern kommando fra master ble sent til meg")
 					AddExternalOrders(e.Elevators[e.Self_id], message.Floor, message.ButtonType)
 				}
 
@@ -104,7 +101,7 @@ func main() {
 					if e.Elevators[e.Self_id].ErrorType == ERROR_NETWORK {
 
 					} else {
-						e.CopyInternalOrder(message.Elevator)
+						e.CopyInternalOrders(message.Elevator)
 					}
 				}
 				e.Elevators[e.Self_id].ErrorType = ERROR_NONE
@@ -124,7 +121,7 @@ func main() {
 
 		case <-broadcastTicker:
 			BroadcastElevatorInfo(*e.Elevators[e.Self_id], fromMain)
-			//Println(e.Elevators[Self_id].Internal_orders)
+			//Println(e.Elevators[Self_id].Orders)
 
 		}
 	}

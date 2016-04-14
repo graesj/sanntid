@@ -1,14 +1,14 @@
 package structs
 
 type Elevator struct {
-	State           int
-	Current_Dir     int
-	Planned_Dir     int
-	Current_Floor   int
-	Furthest_Floor  int
-	Self_id         int
-	ErrorType       int
-	Internal_orders [3][N_FLOORS]byte //both external and internal orders
+	State          int
+	Current_Dir    int
+	Planned_Dir    int
+	Current_Floor  int
+	Furthest_Floor int
+	Self_id        int
+	ErrorType      int
+	Orders         [3][N_FLOORS]byte //both internal and external orders
 }
 
 const (

@@ -1,30 +1,28 @@
 package UPD
 
 import (
-	. "../.././message"
 	"encoding/json"
 	"fmt"
 	"net"
 	"strings"
+
+	. "../.././message"
 )
 
 const (
 	PORT = ":20001"
 )
 
-//Sending and receiving data from UDP-multicast-network
 func CheckError(err error) bool {
 	if err != nil {
 		fmt.Println("Error: ", err)
 		return true
-
 	}
 	return false
 }
 
 func UDPsend(channel chan Message) bool {
 
-	//Connect to UDP network
 	Addr := []string{"129.241.187.255", PORT}
 	broadcastUDP, err := net.ResolveUDPAddr("udp", strings.Join(Addr, ""))
 	if CheckError(err) {
@@ -36,14 +34,11 @@ func UDPsend(channel chan Message) bool {
 		return false
 	}
 
-	//Close connection after packet is sent/or fails to send
 	defer broadcastConn.Close()
-	//Send packet
 
 	for {
-		buf, err := json.Marshal(<-channel) //JavaScript Object Notation, used for data
-		//interchanging
-		//Channels for semaphore
+		buf, err := json.Marshal(<-channel)
+
 		if !CheckError(err) {
 			broadcastConn.Write(buf)
 		}
@@ -81,6 +76,5 @@ func UDPlisten(channel chan Message) bool {
 		}
 
 	}
-	fmt.Println("Shi")
 	return true
 }

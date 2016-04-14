@@ -1,44 +1,42 @@
 package network
 
 import (
-	. "../message"
-	. "./UDP"
-	"fmt"
 	"net"
 	"time"
-	//	. ".././elev_manager"
-	//. ".././elev_manager/fsm"
+
+	. "../message"
 	. "../structs"
+	. "./UDP"
 )
 
 var con_timer map[int]*time.Timer
 
-func BroadcastElevatorInfo(e Elevator, UDPsend chan Message) {
+func BroadcastElevatorInfo(e Elevator, fromMain chan Message) {
 
-	UDPsend <- Message{Source: e.Self_id, ID: ELEVATOR_DATA, Elevator: e}
+	fromMain <- Message{Source: e.Self_id, ID: ELEVATOR_UPDATE, Elevator: e}
 }
 
-func Manager(fromMain chan Message, toMain chan Message) {
+func NetworkManager(fromMain chan Message, toMain chan Message) {
 
 	sendChan := make(chan Message, 50)
-	recieveChan := make(chan Message, 50)
+	receiveChan := make(chan Message, 50)
 
 	go UDPsend(sendChan)
-	go UDPlisten(recieveChan)
+	go UDPlisten(receiveChan)
 
 	con_timer = make(map[int]*time.Timer)
 
 	for {
 		select {
-		case message := <-recieveChan:
+		case message := <-receiveChan:
 
-			if message.ID == ELEVATOR_DATA {
+			if message.ID == ELEVATOR_UPDATE {
 				_, present := con_timer[message.Source]
 
-				if present { //The ip_key already has a running Timer
+				if present {
 					con_timer[message.Source].Reset(500 * time.Millisecond)
 					toMain <- message
-				} else { //new elevator
+				} else {
 					con_timer[message.Source] = time.AfterFunc(500*time.Millisecond, func() { remove_elev(message.Source, toMain, message.Elevator) })
 					message.ID = NEW_ELEVATOR
 
@@ -58,7 +56,6 @@ func Manager(fromMain chan Message, toMain chan Message) {
 }
 
 func remove_elev(ip_key int, toMain chan Message, elev Elevator) {
-	fmt.Print("FRA NETWORK FJERN HEIS")
 	elev.ErrorType = ERROR_NETWORK
 	m := Message{Source: ip_key, ID: REMOVE_ELEVATOR, Elevator: elev}
 	toMain <- m

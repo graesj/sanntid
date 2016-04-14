@@ -10,27 +10,7 @@ import "C"
 import (
 	. "../../.././message"
 	. "../../.././structs"
-	"fmt"
-	"time"
 )
-
-/*
-const (
-	N_FLOORS = 4
-	DIR_UP   = 1
-	DIR_DOWN = -1
-	DIR_STOP = 0
-
-	BTN_UP   = 0
-	BTN_DOWN = 1
-	BTN_CMD  = 2
-)
-
-*/
-
-func ElevInit() {
-	C.elev_init()
-}
 
 func ElevGetButtonSignal(buttonType int, floor int) int {
 	return int(C.elev_get_button_signal(C.elev_button_type_t(C.int(buttonType)), C.int(floor)))
@@ -38,14 +18,6 @@ func ElevGetButtonSignal(buttonType int, floor int) int {
 
 func ElevGetFloorSensorSignal() int {
 	return int(C.elev_get_floor_sensor_signal())
-}
-
-func ElevGetStopSignal() int {
-	return int(C.elev_get_stop_signal())
-}
-
-func ElevGetObstructionSignal() int {
-	return int(C.elev_get_obstruction_signal())
 }
 
 func ElevSetMotorDirection(motorDirection int) {
@@ -76,16 +48,13 @@ func CheckButtons(buttonChan chan Message) {
 
 				} else {
 					if ElevGetButtonSignal(buttonType, floor) == 1 {
-						fmt.Println("trykker")
 						if buttonType == BTN_CMD {
 							buttonMessage := Message{ID: BUTTON_INTERNAL, Floor: floor}
 							buttonChan <- buttonMessage
-							time.Sleep(250 * time.Millisecond)
 
 						} else {
 							buttonMessage := Message{ID: BUTTON_EXTERNAL, ButtonType: buttonType, Floor: floor}
 							buttonChan <- buttonMessage
-							time.Sleep(250 * time.Millisecond)
 
 						}
 					}
@@ -117,4 +86,25 @@ func TurnOffAllExternalLights() {
 			}
 		}
 	}
+}
+
+func RunToFirstFloor() int {
+	elevInit()
+	if ElevGetFloorSensorSignal() == -1 {
+		for ElevGetFloorSensorSignal() == -1 {
+			ElevSetMotorDirection(DIR_UP)
+		}
+	}
+	ElevSetMotorDirection(DIR_STOP)
+	if ElevGetFloorSensorSignal() != 0 {
+		for ElevGetFloorSensorSignal() != 0 {
+			ElevSetMotorDirection(DIR_DOWN)
+		}
+	}
+	ElevSetMotorDirection(DIR_STOP)
+	return 1
+}
+
+func elevInit() {
+	C.elev_init()
 }
