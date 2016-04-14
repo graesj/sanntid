@@ -8,6 +8,8 @@ package driver
 */
 import "C"
 import (
+	"time"
+
 	. "../../.././message"
 	. "../../.././structs"
 )
@@ -51,11 +53,12 @@ func CheckButtons(buttonChan chan Message) {
 						if buttonType == BTN_CMD {
 							buttonMessage := Message{ID: BUTTON_INTERNAL, Floor: floor}
 							buttonChan <- buttonMessage
+							time.Sleep(50 * time.Millisecond)
 
 						} else {
 							buttonMessage := Message{ID: BUTTON_EXTERNAL, ButtonType: buttonType, Floor: floor}
 							buttonChan <- buttonMessage
-
+							time.Sleep(50 * time.Millisecond)
 						}
 					}
 				}

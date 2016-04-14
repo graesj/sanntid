@@ -37,7 +37,7 @@ func NetworkManager(fromMain chan Message, toMain chan Message) {
 					con_timer[message.Source].Reset(500 * time.Millisecond)
 					toMain <- message
 				} else {
-					con_timer[message.Source] = time.AfterFunc(500*time.Millisecond, func() { remove_elev(message.Source, toMain, message.Elevator) })
+					con_timer[message.Source] = time.AfterFunc(500*time.Millisecond, func() { removeElev(message.Source, toMain, message.Elevator) })
 					message.ID = NEW_ELEVATOR
 
 					toMain <- message
@@ -52,10 +52,9 @@ func NetworkManager(fromMain chan Message, toMain chan Message) {
 			sendChan <- message
 		}
 	}
-
 }
 
-func remove_elev(ip_key int, toMain chan Message, elev Elevator) {
+func removeElev(ip_key int, toMain chan Message, elev Elevator) {
 	elev.ErrorType = ERROR_NETWORK
 	m := Message{Source: ip_key, ID: REMOVE_ELEVATOR, Elevator: elev}
 	toMain <- m

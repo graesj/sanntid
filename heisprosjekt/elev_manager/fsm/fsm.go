@@ -25,6 +25,7 @@ func ProcessElevOrders(elev *Elevator, fromMain chan Message) {
 	changeDir := false
 
 	for {
+
 		mutex.Lock()
 		e = elev
 		mutex.Unlock()
@@ -404,5 +405,4 @@ func onMotorError(fromMain chan Message, e *Elevator) {
 	Print("Feil av type: ")
 	Println(e.ErrorType)
 	os.Exit(1)
-
 }
